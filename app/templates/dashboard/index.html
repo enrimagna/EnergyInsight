@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Energy Insight{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Energy Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Time Range</h5>
+            </div>
+            <div class="card-body">
+                <div class="btn-group" role="group" aria-label="Time range">
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="1">Last 24h</button>
+                    <button type="button" class="btn btn-outline-primary time-range active" data-days="7">Last Week</button>
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="30">Last Month</button>
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="90">Last 3 Months</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Energy Consumption</h5>
+            </div>
+            <div class="card-body">
+                <div id="energy-graph" class="graph-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Cost Comparison: Heat Pump vs Diesel</h5>
+            </div>
+            <div class="card-body">
+                <div id="cost-graph" class="graph-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Temperature Trends</h5>
+            </div>
+            <div class="card-body">
+                <div id="temp-graph" class="graph-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Parse graph data from server
+    var graphData = JSON.parse('{{ graphs|tojson|safe }}');
+    
+    // Render initial graphs
+    if (graphData.energy_graph) {
+        Plotly.newPlot('energy-graph', JSON.parse(graphData.energy_graph));
+    }
+    
+    if (graphData.cost_graph) {
+        Plotly.newPlot('cost-graph', JSON.parse(graphData.cost_graph));
+    }
+    
+    if (graphData.temp_graph) {
+        Plotly.newPlot('temp-graph', JSON.parse(graphData.temp_graph));
+    }
+    
+    // Handle time range buttons
+    var timeRangeButtons = document.querySelectorAll('.time-range');
+    Array.prototype.forEach.call(timeRangeButtons, function(button) {
+        button.addEventListener('click', function() {
+            // Update active button
+            Array.prototype.forEach.call(timeRangeButtons, function(b) {
+                b.classList.remove('active');
+            });
+            this.classList.add('active');
+            
+            // Get selected days
+            var days = this.getAttribute('data-days');
+            
+            // Update graphs with new time range
+            updateGraphs(days);
+        });
+    });
+    
+    function updateGraphs(days) {
+        // Fetch new energy data
+        fetch('/data/energy?days=' + days)
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                // Update the energy graph
+                // (Implementation would depend on your data structure)
+            })
+            .catch(function(error) {
+                console.error('Error fetching energy data:', error);
+            });
+        
+        // Fetch new temperature data
+        fetch('/data/temperature?days=' + days)
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                // Update the temperature graph
+                // (Implementation would depend on your data structure)
+            })
+            .catch(function(error) {
+                console.error('Error fetching temperature data:', error);
+            });
+        
+        // Reload the page to get updated graphs (simple approach)
+        // In a production app, you might want to update the graphs dynamically
+        window.location.href = '/?days=' + days;
+    }
+})();
+</script>
+{% endblock %}
