@@ -30,7 +30,7 @@
     </div>
 </div>
 
-<!-- Energy Consumption Graph -->
+<!-- Energy Consumption Chart -->
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -38,13 +38,23 @@
                 <h5 class="card-title mb-0">Energy Consumption</h5>
             </div>
             <div class="card-body">
-                <div id="energy-graph" class="graph-container"></div>
+                <div class="chart-container" style="position: relative; height:400px;">
+                    <canvas id="energy-chart"></canvas>
+                </div>
+                <!-- Debug info -->
+                <div class="mt-2 small text-muted">
+                    {% if 'energy_chart' in charts %}
+                    <p>Chart data available</p>
+                    {% else %}
+                    <p>No energy chart data available</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Cost Comparison Graph -->
+<!-- Cost Comparison Chart -->
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -52,13 +62,23 @@
                 <h5 class="card-title mb-0">Cost Comparison: Heat Pump vs Diesel</h5>
             </div>
             <div class="card-body">
-                <div id="cost-graph" class="graph-container"></div>
+                <div class="chart-container" style="position: relative; height:400px;">
+                    <canvas id="cost-chart"></canvas>
+                </div>
+                <!-- Debug info -->
+                <div class="mt-2 small text-muted">
+                    {% if 'cost_chart' in charts %}
+                    <p>Chart data available</p>
+                    {% else %}
+                    <p>No cost chart data available</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Temperature Graph -->
+<!-- Temperature Chart -->
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -66,7 +86,17 @@
                 <h5 class="card-title mb-0">Temperature Trends</h5>
             </div>
             <div class="card-body">
-                <div id="temp-graph" class="graph-container"></div>
+                <div class="chart-container" style="position: relative; height:400px;">
+                    <canvas id="temp-chart"></canvas>
+                </div>
+                <!-- Debug info -->
+                <div class="mt-2 small text-muted">
+                    {% if 'temp_chart' in charts %}
+                    <p>Chart data available</p>
+                    {% else %}
+                    <p>No temperature chart data available</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -76,20 +106,57 @@
 {% block scripts %}
 <script>
 (function() {
-    // Parse graph data from server
-    var graphData = JSON.parse('{{ graphs|tojson|safe }}');
+    // Parse chart data from server
+    var chartData = {{ charts|tojson|safe }};
     
-    // Render initial graphs
-    if (graphData.energy_graph) {
-        Plotly.newPlot('energy-graph', JSON.parse(graphData.energy_graph));
+    console.log("Chart data received:", chartData);
+    
+    // Render energy chart
+    if (chartData.energy_chart) {
+        try {
+            var energyChartConfig = JSON.parse(chartData.energy_chart);
+            console.log("Energy chart data parsed successfully");
+            var energyCtx = document.getElementById('energy-chart').getContext('2d');
+            new Chart(energyCtx, energyChartConfig);
+        } catch (e) {
+            console.error("Error parsing energy chart data:", e);
+            document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-danger">Error loading energy chart: ' + e.message + '</div>';
+        }
+    } else {
+        console.warn("No energy chart data available");
+        document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-warning">No energy data available</div>';
     }
     
-    if (graphData.cost_graph) {
-        Plotly.newPlot('cost-graph', JSON.parse(graphData.cost_graph));
+    // Render cost chart
+    if (chartData.cost_chart) {
+        try {
+            var costChartConfig = JSON.parse(chartData.cost_chart);
+            console.log("Cost chart data parsed successfully");
+            var costCtx = document.getElementById('cost-chart').getContext('2d');
+            new Chart(costCtx, costChartConfig);
+        } catch (e) {
+            console.error("Error parsing cost chart data:", e);
+            document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-danger">Error loading cost chart: ' + e.message + '</div>';
+        }
+    } else {
+        console.warn("No cost chart data available");
+        document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-warning">No cost data available</div>';
     }
     
-    if (graphData.temp_graph) {
-        Plotly.newPlot('temp-graph', JSON.parse(graphData.temp_graph));
+    // Render temperature chart
+    if (chartData.temp_chart) {
+        try {
+            var tempChartConfig = JSON.parse(chartData.temp_chart);
+            console.log("Temperature chart data parsed successfully");
+            var tempCtx = document.getElementById('temp-chart').getContext('2d');
+            new Chart(tempCtx, tempChartConfig);
+        } catch (e) {
+            console.error("Error parsing temperature chart data:", e);
+            document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-danger">Error loading temperature chart: ' + e.message + '</div>';
+        }
+    } else {
+        console.warn("No temperature chart data available");
+        document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-warning">No temperature data available</div>';
     }
     
     // Handle time range buttons
@@ -105,7 +172,7 @@
             // Get selected days
             var days = this.getAttribute('data-days');
             
-            // Reload the page to get updated graphs
+            // Reload the page to get updated charts
             window.location.href = '{{ url_for("dashboard.index") }}?days=' + days;
         });
     });
