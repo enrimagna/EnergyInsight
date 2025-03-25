@@ -3,7 +3,14 @@
 {% block title %}Dashboard - Energy Insight{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Energy Dashboard</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Energy Dashboard</h1>
+    <div>
+        <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-gear"></i> Settings
+        </a>
+    </div>
+</div>
 
 <div class="row mb-4">
     <div class="col-md-12">
@@ -23,6 +30,7 @@
     </div>
 </div>
 
+<!-- Energy Consumption Graph -->
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -36,6 +44,7 @@
     </div>
 </div>
 
+<!-- Cost Comparison Graph -->
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -49,6 +58,7 @@
     </div>
 </div>
 
+<!-- Temperature Graph -->
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
@@ -95,42 +105,10 @@
             // Get selected days
             var days = this.getAttribute('data-days');
             
-            // Update graphs with new time range
-            updateGraphs(days);
+            // Reload the page to get updated graphs
+            window.location.href = '{{ url_for("dashboard.index") }}?days=' + days;
         });
     });
-    
-    function updateGraphs(days) {
-        // Fetch new energy data
-        fetch('/data/energy?days=' + days)
-            .then(function(response) {
-                return response.json();
-            })
-            .then(function(data) {
-                // Update the energy graph
-                // (Implementation would depend on your data structure)
-            })
-            .catch(function(error) {
-                console.error('Error fetching energy data:', error);
-            });
-        
-        // Fetch new temperature data
-        fetch('/data/temperature?days=' + days)
-            .then(function(response) {
-                return response.json();
-            })
-            .then(function(data) {
-                // Update the temperature graph
-                // (Implementation would depend on your data structure)
-            })
-            .catch(function(error) {
-                console.error('Error fetching temperature data:', error);
-            });
-        
-        // Reload the page to get updated graphs (simple approach)
-        // In a production app, you might want to update the graphs dynamically
-        window.location.href = '/?days=' + days;
-    }
 })();
 </script>
 {% endblock %}

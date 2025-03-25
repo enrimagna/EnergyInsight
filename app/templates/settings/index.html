@@ -3,109 +3,136 @@
 {% block title %}Settings - Energy Insight{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Settings</h1>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }}">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Settings</h1>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary">
+        <i class="bi bi-speedometer2"></i> Back to Dashboard
+    </a>
+</div>
 
 <div class="row mb-4">
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Energy Prices</h5>
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Price Settings</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('settings.index') }}">
-                    <input type="hidden" name="update_prices" value="1">
-                    
+                <form method="post">
                     <div class="mb-3">
-                        <label for="electricity_price" class="form-label">Electricity Price (per kWh)</label>
-                        <div class="input-group">
-                            <input type="number" step="0.01" min="0" class="form-control" id="electricity_price" 
-                                name="electricity_price" value="{{ settings.electricity_price }}" required>
-                            <span class="input-group-text">€</span>
-                        </div>
+                        <label for="electricity_price" class="form-label">Electricity Price (€/kWh):</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="electricity_price" 
+                            name="electricity_price" value="{{ settings.electricity_price }}" required>
+                        {% if settings.db_electricity_price is defined %}
+                        <small class="text-muted">Current value in database: {{ settings.db_electricity_price }}</small>
+                        {% endif %}
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="diesel_price" class="form-label">Diesel Price (per liter)</label>
-                        <div class="input-group">
-                            <input type="number" step="0.01" min="0" class="form-control" id="diesel_price" 
-                                name="diesel_price" value="{{ settings.diesel_price }}" required>
-                            <span class="input-group-text">€</span>
-                        </div>
+                        <label for="diesel_price" class="form-label">Diesel Price (€/L):</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="diesel_price" 
+                            name="diesel_price" value="{{ settings.diesel_price }}" required>
+                        {% if settings.db_diesel_price is defined %}
+                        <small class="text-muted">Current value in database: {{ settings.db_diesel_price }}</small>
+                        {% endif %}
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="diesel_efficiency" class="form-label">Diesel Heater Efficiency (0-1)</label>
+                        <label for="diesel_efficiency" class="form-label">Diesel Efficiency (0-1):</label>
                         <input type="number" step="0.01" min="0" max="1" class="form-control" id="diesel_efficiency" 
                             name="diesel_efficiency" value="{{ settings.diesel_efficiency }}" required>
-                        <div class="form-text">Typical values range from 0.7 to 0.9</div>
+                        {% if settings.db_diesel_efficiency is defined %}
+                        <small class="text-muted">Current value in database: {{ settings.db_diesel_efficiency }}</small>
+                        {% endif %}
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary">Save Prices</button>
+                    <button type="submit" name="update_prices" class="btn btn-primary w-100">
+                        <i class="bi bi-save"></i> Save Price Settings
+                    </button>
                 </form>
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Data Source Credentials</h5>
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Data Source Settings</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('settings.index') }}">
-                    <input type="hidden" name="update_credentials" value="1">
-                    
-                    <h6 class="mt-3 mb-3">MELCloud</h6>
+                <form method="post">
                     <div class="mb-3">
-                        <label for="melcloud_username" class="form-label">Username/Email</label>
+                        <label for="melcloud_username" class="form-label">MELCloud Username:</label>
                         <input type="email" class="form-control" id="melcloud_username" 
                             name="melcloud_username" value="{{ settings.melcloud_username }}" required>
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="melcloud_password" class="form-label">Password</label>
+                        <label for="melcloud_password" class="form-label">MELCloud Password:</label>
                         <input type="password" class="form-control" id="melcloud_password" 
                             name="melcloud_password" value="{{ settings.melcloud_password }}" required>
                     </div>
-                    
-                    <h6 class="mt-3 mb-3">Home Assistant</h6>
+                    <button type="submit" name="update_credentials" class="btn btn-primary mb-3 w-100">
+                        <i class="bi bi-save"></i> Save MELCloud Credentials
+                    </button>
+                    <button type="submit" formaction="{{ url_for('settings.test_connection') }}" 
+                        name="service" value="melcloud" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-check-circle"></i> Test MELCloud Connection
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Home Assistant Settings</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
                     <div class="mb-3">
-                        <label for="hass_url" class="form-label">URL</label>
+                        <label for="hass_url" class="form-label">Home Assistant URL:</label>
                         <input type="url" class="form-control" id="hass_url" 
-                            name="hass_url" value="{{ settings.hass_url }}" placeholder="http://homeassistant:8123" required>
+                            name="hass_url" value="{{ settings.hass_url }}" required
+                            placeholder="http://your-homeassistant:8123">
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="hass_token" class="form-label">Long-Lived Access Token</label>
+                        <label for="hass_token" class="form-label">Home Assistant Long-Lived Access Token:</label>
                         <input type="password" class="form-control" id="hass_token" 
                             name="hass_token" value="{{ settings.hass_token }}" required>
-                        <div class="form-text">Generated in your Home Assistant profile</div>
                     </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Save Credentials</button>
-                    </div>
+                    <button type="submit" name="update_credentials" class="btn btn-primary mb-3 w-100">
+                        <i class="bi bi-save"></i> Save Home Assistant Settings
+                    </button>
+                    <button type="submit" formaction="{{ url_for('settings.test_connection') }}" 
+                        name="service" value="homeassistant" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-check-circle"></i> Test Home Assistant Connection
+                    </button>
                 </form>
-                
-                <div class="mt-4">
-                    <form method="POST" action="{{ url_for('settings.test_connection') }}">
-                        <input type="hidden" name="service" value="melcloud">
-                        <button type="submit" class="btn btn-outline-secondary mb-2">Test MELCloud Connection</button>
-                    </form>
-                    
-                    <form method="POST" action="{{ url_for('settings.test_connection') }}">
-                        <input type="hidden" name="service" value="homeassistant">
-                        <button type="submit" class="btn btn-outline-secondary">Test Home Assistant Connection</button>
-                    </form>
-                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">Application Information</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    <strong>Energy Insight</strong> is a web application that monitors your heat pump energy usage and compares costs with traditional heating methods.
+                </p>
+                <p>
+                    <strong>Data Sources:</strong>
+                    <ul>
+                        <li>MELCloud API - For heat pump energy data</li>
+                        <li>Home Assistant - For temperature data</li>
+                    </ul>
+                </p>
+                <p>
+                    <strong>Graphs:</strong>
+                    <ul>
+                        <li>Energy Consumption - Shows power and energy usage over time</li>
+                        <li>Cost Comparison - Compares heat pump costs with equivalent diesel heating</li>
+                        <li>Temperature Trends - Shows indoor and outdoor temperatures</li>
+                    </ul>
+                </p>
             </div>
         </div>
     </div>

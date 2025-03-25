@@ -1,14 +1,16 @@
 from flask import Blueprint, render_template, request
 import plotly.graph_objects as go
 import json
+import logging
 from datetime import datetime, timedelta
 from app.db.models import Database
 
+logger = logging.getLogger(__name__)
 bp = Blueprint('dashboard', __name__)
 
 @bp.route('/')
 def index():
-    """Main dashboard view showing all graphs."""
+    """Main dashboard view showing all energy and temperature data."""
     # Get time range from request
     days = request.args.get('days', default=7, type=int)
     
@@ -66,11 +68,13 @@ def index():
             electricity_price = price_data['electricity_price']
             diesel_price = price_data['diesel_price']
             diesel_efficiency = price_data['diesel_efficiency']
+            logger.info(f"Dashboard using prices from DB - Electricity: {electricity_price}, Diesel: {diesel_price}, Efficiency: {diesel_efficiency}")
         else:
             # Fallback to default values if no prices in database
             electricity_price = 0.28
             diesel_price = 1.50
             diesel_efficiency = 0.85
+            logger.warning(f"No prices found in DB, using defaults - Electricity: {electricity_price}, Diesel: {diesel_price}, Efficiency: {diesel_efficiency}")
         
         # Calculate costs
         timestamps = [row[0] for row in energy_data]
@@ -140,4 +144,11 @@ def index():
         )
         graphs['temp_graph'] = json.dumps(temp_fig.to_dict())
     
-    return render_template('dashboard/index.html', graphs=graphs)
+    # Get current prices for display in the dashboard
+    current_prices = {
+        'electricity_price': electricity_price if 'electricity_price' in locals() else 0.28,
+        'diesel_price': diesel_price if 'diesel_price' in locals() else 1.50,
+        'diesel_efficiency': diesel_efficiency if 'diesel_efficiency' in locals() else 0.85
+    }
+    
+    return render_template('dashboard/index.html', graphs=graphs, current_prices=current_prices)

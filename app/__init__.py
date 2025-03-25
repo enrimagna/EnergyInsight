@@ -1,7 +1,7 @@
 import os
 import logging
 import asyncio
-from flask import Flask, session, request
+from flask import Flask, session, request, redirect, url_for
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
@@ -68,9 +68,14 @@ def create_app(test_config=None):
     
     # Register blueprints
     from app.routes import dashboard, settings, data
-    app.register_blueprint(dashboard.bp)
+    app.register_blueprint(dashboard.bp, url_prefix='/dashboard')
     app.register_blueprint(settings.bp, url_prefix='/settings')
     app.register_blueprint(data.bp, url_prefix='/data')
+    
+    # Root route redirects to dashboard
+    @app.route('/')
+    def index():
+        return redirect(url_for('dashboard.index'))
     
     # Add global context processors
     @app.context_processor

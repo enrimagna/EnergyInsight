@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Energy Insight{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     {% block extra_head %}{% endblock %}
@@ -12,7 +13,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">Energy Insight</a>
+            <a class="navbar-brand" href="{{ url_for('index') }}">Energy Insight</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -20,14 +21,18 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" 
-                            href="{{ url_for('dashboard.index') }}">Dashboard</a>
+                            href="{{ url_for('dashboard.index') }}">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint.startswith('settings.') %}active{% endif %}" 
-                            href="{{ url_for('settings.index') }}">Settings</a>
+                            href="{{ url_for('settings.index') }}">
+                            <i class="bi bi-gear"></i> Settings
+                        </a>
                     </li>
                 </ul>
-                <span class="navbar-text">
+                <span class="navbar-text ms-3">
                     {{ current_date.strftime('%Y-%m-%d %H:%M') }}
                 </span>
             </div>
