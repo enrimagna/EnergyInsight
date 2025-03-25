@@ -16,28 +16,74 @@ class MockMELCloudDevice:
         self.power = True
         
     def energy_report(self):
-        # Return a realistic-looking mock energy report
-        yesterday = datetime.now() - timedelta(days=1)
-        return {
-            'Energy_Consumed': {
-                'Day': [{'value': 10.5, 'date': yesterday.strftime('%Y-%m-%d')}],
-                'Week': [{'value': 65.3, 'date': (yesterday - timedelta(days=i)).strftime('%Y-%m-%d')} 
-                         for i in range(7)],
-                'Month': [],
-                'Year': []
-            },
-            'Power_Consumed': {
-                'Day': [{'value': 1200.0, 'date': yesterday.strftime('%Y-%m-%d')}],
-                'Week': [{'value': 1350.0 - (i * 50), 'date': (yesterday - timedelta(days=i)).strftime('%Y-%m-%d')} 
-                         for i in range(7)],
-                'Month': [],
-                'Year': []
+        """Return a realistic-looking mock energy report that matches the expected structure."""
+        try:
+            # Generate data for the last 7 days
+            yesterday = datetime.now() - timedelta(days=1)
+            
+            # Create daily data for the past week
+            day_data = []
+            week_data = []
+            
+            for i in range(7):
+                date_str = (yesterday - timedelta(days=i)).strftime('%Y-%m-%d')
+                day_value = 10.5 - (i * 0.5)  # Decreasing values for older days
+                week_value = 65.3 - (i * 3.0)  # Decreasing values for older days
+                
+                if i == 0:  # Only add yesterday to the day data
+                    day_data.append({'value': day_value, 'date': date_str})
+                
+                week_data.append({'value': week_value, 'date': date_str})
+            
+            # Create the full report structure
+            report = {
+                'Energy_Consumed': {
+                    'Day': day_data,
+                    'Week': week_data,
+                    'Month': [],
+                    'Year': []
+                },
+                'Power_Consumed': {
+                    'Day': [{'value': 1200.0, 'date': day_data[0]['date']}] if day_data else [],
+                    'Week': [{'value': 1350.0 - (i * 50), 'date': week_data[i]['date']} for i in range(len(week_data))],
+                    'Month': [],
+                    'Year': []
+                }
             }
-        }
+            
+            logger.info(f"Generated mock energy report with {len(day_data)} day entries and {len(week_data)} week entries")
+            return report
+            
+        except Exception as e:
+            logger.error(f"Error generating mock energy report: {str(e)}")
+            # Return a minimal valid structure to prevent NoneType errors
+            return {
+                'Energy_Consumed': {'Day': [], 'Week': [], 'Month': [], 'Year': []},
+                'Power_Consumed': {'Day': [], 'Week': [], 'Month': [], 'Year': []}
+            }
 
 # Mock implementation for testing when pymelcloud is not available
 async def mock_login(username, password):
-    return {"devices": [MockMELCloudDevice()]}
+    """Simulate a successful login to MELCloud and return a session with mock devices."""
+    try:
+        logger.info(f"Using mock MELCloud login for username: {username}")
+        # Create a mock device
+        mock_device = MockMELCloudDevice()
+        # Return a dictionary that matches the expected structure
+        # The key issue is that we need to return a dict with a 'get' method
+        # and a 'devices' key containing our mock device
+        return {
+            "devices": [mock_device],
+            "get": lambda key, default=None: [mock_device] if key == "devices" else default
+        }
+    except Exception as e:
+        logger.error(f"Error in mock_login: {str(e)}")
+        # Return a valid structure with get method to prevent NoneType errors
+        mock_device = MockMELCloudDevice()
+        return {
+            "devices": [mock_device],
+            "get": lambda key, default=None: [mock_device] if key == "devices" else default
+        }
 
 class MELCloudFetcher:
     """Fetches energy usage data from MELCloud."""
@@ -47,6 +93,58 @@ class MELCloudFetcher:
         self.password = password
         self.db = db if db else Database()
         
+    async def test_connection(self):
+        """Test the connection to MELCloud without fetching or processing data."""
+        try:
+            # First try to import the real module
+            try:
+                import pymelcloud
+                logger.info("Using real pymelcloud library for connection test")
+                session = await pymelcloud.login(self.username, self.password)
+                if not session:
+                    logger.error("pymelcloud login returned None")
+                    raise ValueError("Failed to authenticate with MELCloud")
+            except ImportError:
+                # If not available, use mock implementation
+                logger.warning("pymelcloud not available, using mock implementation for test")
+                session = await mock_login(self.username, self.password)
+            
+            logger.info(f"Session type: {type(session)}")
+            
+            # Safely check if session contains devices
+            devices = []
+            if session is None:
+                logger.error("Session is None")
+                raise ValueError("Failed to create a valid session with MELCloud")
+                
+            # Try to get devices using get method first (for real pymelcloud)
+            if hasattr(session, 'get'):
+                logger.info("Session has 'get' method, using it to retrieve devices")
+                devices = session.get('devices', [])
+            # Then try direct dictionary access (for our mock)
+            elif isinstance(session, dict) and 'devices' in session:
+                logger.info("Session is a dict with 'devices' key, accessing directly")
+                devices = session['devices']
+            else:
+                logger.error(f"Session doesn't have expected structure: {session}")
+                raise ValueError("Unexpected session structure from MELCloud")
+                
+            # Check if we have any devices
+            if not devices:
+                logger.error("No devices found in MELCloud session")
+                raise ValueError("No devices found in MELCloud account")
+                
+            # Just check if we can access the first device
+            device = devices[0]
+            device_name = getattr(device, 'name', 'Unknown')
+            logger.info(f"Test successful - Found device: {device_name}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error testing MELCloud connection: {str(e)}")
+            raise  # Re-raise the exception for proper error handling
+        
     async def fetch_data(self):
         """Fetch energy usage data from MELCloud and store in database."""
         try:
@@ -55,39 +153,93 @@ class MELCloudFetcher:
                 import pymelcloud
                 logger.info("Using real pymelcloud library")
                 session = await pymelcloud.login(self.username, self.password)
+                if not session:
+                    logger.error("pymelcloud login returned None")
+                    raise ValueError("Failed to authenticate with MELCloud")
             except ImportError:
                 # If not available, use mock implementation
                 logger.warning("pymelcloud not available, using mock implementation")
                 session = await mock_login(self.username, self.password)
                 
+            # Check if session contains devices
+            if not session or "devices" not in session or not session["devices"]:
+                logger.error("No devices found in MELCloud session")
+                raise ValueError("No devices found in MELCloud account")
+                
             device = session["devices"][0]  # Assuming first device is the heat pump
-            energy_report = device.energy_report()
+            logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
             
+            # Get energy report with error handling
+            try:
+                energy_report = device.energy_report()
+                logger.info("Successfully retrieved energy report")
+            except Exception as e:
+                logger.error(f"Error getting energy report: {str(e)}")
+                raise ValueError(f"Failed to get energy report from device: {str(e)}")
+            
+            # Validate energy report structure
+            if not energy_report or not isinstance(energy_report, dict):
+                logger.error(f"Invalid energy report format: {type(energy_report)}")
+                raise ValueError("Energy report has invalid format")
+                
+            # Check if required keys exist
+            required_keys = ['Energy_Consumed', 'Power_Consumed']
+            for key in required_keys:
+                if key not in energy_report:
+                    logger.error(f"Missing key in energy report: {key}")
+                    raise ValueError(f"Energy report missing required data: {key}")
+            
+            # Check if Day data exists
+            if 'Day' not in energy_report['Energy_Consumed'] or 'Day' not in energy_report['Power_Consumed']:
+                logger.error("Missing Day data in energy report")
+                raise ValueError("Energy report missing daily data")
+                
             # Process daily energy data
-            for day_data in energy_report['Energy_Consumed']['Day']:
-                date_str = day_data['date']
-                energy_consumed = day_data['value']
+            day_data = energy_report['Energy_Consumed']['Day']
+            if not day_data:
+                logger.warning("No daily energy consumption data found")
+                return True  # Return success but with no data
+                
+            for day_data_item in day_data:
+                # Validate day data structure
+                if 'date' not in day_data_item or 'value' not in day_data_item:
+                    logger.warning(f"Invalid day data item: {day_data_item}")
+                    continue
+                    
+                date_str = day_data_item['date']
+                energy_consumed = day_data_item['value']
                 
                 # Find corresponding power consumption
-                power_consumption = next(
-                    (day['value'] for day in energy_report['Power_Consumed']['Day'] if day['date'] == date_str),
-                    0.0
-                )
+                power_consumption = 0.0
+                for power_day in energy_report['Power_Consumed']['Day']:
+                    if power_day.get('date') == date_str:
+                        power_consumption = power_day.get('value', 0.0)
+                        break
                 
                 # Calculate cost
                 electricity_price = float(os.getenv('ELECTRICITY_PRICE', 0.28))
                 cost = energy_consumed * electricity_price
                 
                 # Convert date string to timestamp
-                timestamp = datetime.strptime(date_str, '%Y-%m-%d')
+                try:
+                    timestamp = datetime.strptime(date_str, '%Y-%m-%d')
+                except ValueError:
+                    logger.warning(f"Invalid date format: {date_str}")
+                    continue
                 
                 # Store in database
-                self.db.add_energy_data(timestamp, power_consumption, energy_consumed, cost)
+                try:
+                    self.db.add_energy_data(timestamp, power_consumption, energy_consumed, cost)
+                    logger.info(f"Stored energy data for {date_str}: {energy_consumed} kWh, {power_consumption} W")
+                except Exception as e:
+                    logger.error(f"Error storing energy data: {str(e)}")
                 
             logger.info("Energy data fetched and stored successfully")
+            return True
             
         except Exception as e:
-            logger.error(f"Error fetching energy data: {e}")
+            logger.error(f"Error fetching energy data: {str(e)}")
+            raise  # Re-raise the exception for proper error handling in test connections
             
 class HomeAssistantFetcher:
     """Fetches temperature data from Home Assistant."""
@@ -111,13 +263,13 @@ class HomeAssistantFetcher:
             
             # Make request to Home Assistant API
             try:
-                response = requests.get(api_url, headers=headers)
+                response = requests.get(api_url, headers=headers, timeout=10)  # Add timeout
                 response.raise_for_status()
             except (requests.exceptions.RequestException, requests.exceptions.ConnectionError) as e:
-                logger.warning(f"Could not connect to Home Assistant: {e}")
+                logger.warning(f"Could not connect to Home Assistant: {str(e)}")
                 # Generate mock data if Home Assistant is not available
                 self._generate_mock_data()
-                return
+                return False  # Return False to indicate connection failure
             
             # Parse response
             states = response.json()
@@ -134,16 +286,19 @@ class HomeAssistantFetcher:
                 # Store in database
                 self.db.add_temperature_data(timestamp, indoor_temp, outdoor_temp)
                 logger.info("Temperature data fetched and stored successfully")
+                return True  # Return True to indicate success
             else:
                 logger.warning("Temperature sensors not found in Home Assistant")
                 # Generate mock data if sensors are not found
                 self._generate_mock_data()
+                return False  # Return False to indicate missing sensors
                 
         except Exception as e:
-            logger.error(f"Error fetching temperature data: {e}")
+            logger.error(f"Error fetching temperature data: {str(e)}")
             # Generate mock data on error
             self._generate_mock_data()
-            
+            raise  # Re-raise the exception for proper error handling in test connections
+
     def _generate_mock_data(self):
         """Generate mock temperature data for testing purposes."""
         import random
@@ -179,7 +334,27 @@ def update_prices(electricity_price=None, diesel_price=None, diesel_efficiency=N
         diesel_price = float(os.getenv('DIESEL_PRICE', 1.50))
         diesel_efficiency = float(os.getenv('DIESEL_EFFICIENCY', 0.85))
     
+    # Log the values before updating the database
+    logger.info(f"update_prices function received - Electricity: {electricity_price} (type: {type(electricity_price)}), "
+                f"Diesel: {diesel_price} (type: {type(diesel_price)}), "
+                f"Efficiency: {diesel_efficiency} (type: {type(diesel_efficiency)})")
+    
+    # Ensure all values are floats
+    electricity_price = float(electricity_price)
+    diesel_price = float(diesel_price)
+    diesel_efficiency = float(diesel_efficiency)
+    
     db.update_prices(electricity_price, diesel_price, diesel_efficiency)
+    
+    # Verify the update
+    current_prices = db.get_current_prices()
+    if current_prices:
+        logger.info(f"Prices after DB update - Electricity: {current_prices['electricity_price']}, "
+                    f"Diesel: {current_prices['diesel_price']}, "
+                    f"Efficiency: {current_prices['diesel_efficiency']}")
+    else:
+        logger.warning("No price data found in database after update in data_fetchers.py")
+    
     db.close_connection()  # Close the connection to ensure changes are committed
     
     logger.info(f"Updated prices: electricity {electricity_price}/kWh, diesel {diesel_price}/L, efficiency {diesel_efficiency}")

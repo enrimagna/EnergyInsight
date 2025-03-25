@@ -67,11 +67,13 @@
                         <input type="password" class="form-control" id="melcloud_password" 
                             name="melcloud_password" value="{{ settings.melcloud_password }}" required>
                     </div>
-                    <button type="submit" name="update_credentials" class="btn btn-primary mb-3 w-100">
+                    <button type="submit" name="update_melcloud" class="btn btn-primary mb-3 w-100">
                         <i class="bi bi-save"></i> Save MELCloud Credentials
                     </button>
-                    <button type="submit" formaction="{{ url_for('settings.test_connection') }}" 
-                        name="service" value="melcloud" class="btn btn-outline-secondary w-100">
+                </form>
+                <form method="post" action="{{ url_for('settings.test_connection') }}">
+                    <input type="hidden" name="service" value="melcloud">
+                    <button type="submit" class="btn btn-outline-secondary w-100">
                         <i class="bi bi-check-circle"></i> Test MELCloud Connection
                     </button>
                 </form>
@@ -95,11 +97,13 @@
                         <input type="password" class="form-control" id="hass_token" 
                             name="hass_token" value="{{ settings.hass_token }}" required>
                     </div>
-                    <button type="submit" name="update_credentials" class="btn btn-primary mb-3 w-100">
+                    <button type="submit" name="update_homeassistant" class="btn btn-primary mb-3 w-100">
                         <i class="bi bi-save"></i> Save Home Assistant Settings
                     </button>
-                    <button type="submit" formaction="{{ url_for('settings.test_connection') }}" 
-                        name="service" value="homeassistant" class="btn btn-outline-secondary w-100">
+                </form>
+                <form method="post" action="{{ url_for('settings.test_connection') }}">
+                    <input type="hidden" name="service" value="homeassistant">
+                    <button type="submit" class="btn btn-outline-secondary w-100">
                         <i class="bi bi-check-circle"></i> Test Home Assistant Connection
                     </button>
                 </form>
