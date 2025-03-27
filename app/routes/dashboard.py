@@ -286,4 +286,10 @@ def index():
     # Ensure current_date is a datetime object
     current_date = datetime.now()
     
-    return render_template('dashboard/index.html', charts=charts, current_prices=current_prices, current_date=current_date)
+    return render_template(
+        'dashboard/index.html', 
+        charts=charts,
+        current_prices=current_prices,
+        current_date=current_date,
+        timedelta=timedelta
+    )
