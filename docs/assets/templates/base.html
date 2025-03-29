@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.name }}</title>
+    <link rel="stylesheet" href="{{ 'assets/css/custom.css' | url }}">
+    <!-- Material Icons for sidebar icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Roboto font -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="header">
+        <button class="menu-toggle" aria-label="Toggle sidebar">
+            <span class="material-icons">menu</span>
+        </button>
+        <h1>{{ site.name }}</h1>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="nav-text">Navigation</div>
+            </div>
+            <nav>
+                <ul class="nav-list">
+                    {% for nav_item in nav %}
+                    <li class="nav-item">
+                        <a href="{{ nav_item.url | url }}" class="nav-link">
+                            <span class="nav-icon material-icons">
+                                {% if nav_item.title == "Home" %}home{% endif %}
+                                {% if nav_item.title == "Setup" %}settings{% endif %}
+                                {% if nav_item.title == "Data Sources" %}cloud{% endif %}
+                                {% if nav_item.title == "Database" %}storage{% endif %}
+                                {% if nav_item.title == "Web Apps" %}web{% endif %}
+                                {% if nav_item.title == "Deployment" %}publish{% endif %}
+                                {% if not nav_item.title in ["Home", "Setup", "Data Sources", "Database", "Web Apps", "Deployment"] %}description{% endif %}
+                            </span>
+                            <span class="nav-text">{{ nav_item.title }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+        </aside>
+        
+        <div class="overlay"></div>
+        
+        <main class="content">
+            {% block content %}
+                {{ page.content }}
+            {% endblock %}
+        </main>
+    </div>
+    
+    <script src="{{ 'assets/js/custom.js' | url }}"></script>
+    {% block extra_javascript %}{% endblock %}
+</body>
+</html>

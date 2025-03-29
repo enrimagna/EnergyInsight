@@ -14,36 +14,76 @@
     <div class="col-md-6">
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">Price Settings</h5>
+                <h5 class="card-title mb-0">Current Price Settings</h5>
             </div>
             <div class="card-body">
                 <form method="post">
                     <div class="mb-3">
                         <label for="electricity_price" class="form-label">Electricity Price (€/kWh):</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="electricity_price" 
+                        <input type="number" step="0.0001" min="0" class="form-control" id="electricity_price" 
                             name="electricity_price" value="{{ settings.electricity_price }}" required>
-                        {% if settings.db_electricity_price is defined %}
-                        <small class="text-muted">Current value in database: {{ settings.db_electricity_price }}</small>
-                        {% endif %}
                     </div>
                     <div class="mb-3">
                         <label for="diesel_price" class="form-label">Diesel Price (€/L):</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="diesel_price" 
+                        <input type="number" step="0.0001" min="0" class="form-control" id="diesel_price" 
                             name="diesel_price" value="{{ settings.diesel_price }}" required>
-                        {% if settings.db_diesel_price is defined %}
-                        <small class="text-muted">Current value in database: {{ settings.db_diesel_price }}</small>
-                        {% endif %}
                     </div>
                     <div class="mb-3">
                         <label for="diesel_efficiency" class="form-label">Diesel Efficiency (0-1):</label>
-                        <input type="number" step="0.01" min="0" max="1" class="form-control" id="diesel_efficiency" 
+                        <input type="number" step="0.0001" min="0" max="1" class="form-control" id="diesel_efficiency" 
                             name="diesel_efficiency" value="{{ settings.diesel_efficiency }}" required>
-                        {% if settings.db_diesel_efficiency is defined %}
-                        <small class="text-muted">Current value in database: {{ settings.db_diesel_efficiency }}</small>
-                        {% endif %}
                     </div>
                     <button type="submit" name="update_prices" class="btn btn-primary w-100">
-                        <i class="bi bi-save"></i> Save Price Settings
+                        <i class="bi bi-save"></i> Save Current Price Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Monthly Price Management -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Monthly Price Management</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="price_year" class="form-label">Year:</label>
+                            <select class="form-select" id="price_year" name="price_year" required>
+                                {% for year in range(settings.current_year - 5, settings.current_year + 2) %}
+                                <option value="{{ year }}" {% if year == settings.current_year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="price_month" class="form-label">Month:</label>
+                            <select class="form-select" id="price_month" name="price_month" required>
+                                {% for month in range(1, 13) %}
+                                <option value="{{ month }}" {% if month == settings.current_month %}selected{% endif %}>
+                                    {{ month }} - {{ ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][month-1] }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="electricity_price" class="form-label">Electricity Price (€/kWh):</label>
+                        <input type="number" step="0.0001" min="0" class="form-control" id="electricity_price" 
+                            name="electricity_price" value="{{ settings.electricity_price }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="diesel_price" class="form-label">Diesel Price (€/L):</label>
+                        <input type="number" step="0.0001" min="0" class="form-control" id="diesel_price" 
+                            name="diesel_price" value="{{ settings.diesel_price }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="diesel_efficiency" class="form-label">Diesel Efficiency (0-1):</label>
+                        <input type="number" step="0.0001" min="0" max="1" class="form-control" id="diesel_efficiency" 
+                            name="diesel_efficiency" value="{{ settings.diesel_efficiency }}" required>
+                    </div>
+                    <button type="submit" name="update_monthly_price" class="btn btn-primary w-100">
+                        <i class="bi bi-save"></i> Save Monthly Price
                     </button>
                 </form>
             </div>
@@ -51,6 +91,43 @@
     </div>
 
     <div class="col-md-6">
+        <!-- Price History Table -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Price History</h5>
+            </div>
+            <div class="card-body">
+                {% if price_history and price_history|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Period</th>
+                                <th>Electricity (€/kWh)</th>
+                                <th>Diesel (€/L)</th>
+                                <th>Efficiency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for price in price_history %}
+                            <tr>
+                                <td>{{ price.month_name }} {{ price.year }}</td>
+                                <td>{{ price.electricity_price|round(4) }}</td>
+                                <td>{{ price.diesel_price|round(4) }}</td>
+                                <td>{{ (price.diesel_efficiency * 100)|round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    No price history available. Add monthly prices to see them here.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="card-title mb-0">Data Source Settings</h5>
@@ -132,7 +209,8 @@
                 <p>
                     <strong>Graphs:</strong>
                     <ul>
-                        <li>Energy Consumption - Shows power and energy usage over time</li>
+                        <li>Energy Consumption and Production - Shows energy usage over time</li>
+                        <li>Heat Pump Efficiency (COP) - Shows coefficient of performance</li>
                         <li>Cost Comparison - Compares heat pump costs with equivalent diesel heating</li>
                         <li>Temperature Trends - Shows indoor and outdoor temperatures</li>
                     </ul>
@@ -146,14 +224,10 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Fix for bootstrap-legacy-autofill-overlay.js error
-        // Properly initialize form elements with autofill
+        // Initialize form elements
         var formInputs = document.querySelectorAll('input, select, textarea');
         formInputs.forEach(function(input) {
-            // Add event listeners using function expressions instead of arrow functions
-            // to ensure 'this' is properly bound
             input.addEventListener('change', function() {
-                // This helps Bootstrap properly recognize changed form fields
                 if (this.value) {
                     this.classList.add('is-valid');
                 }
@@ -164,21 +238,6 @@
                 input.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
-        
-        // Initialize any Bootstrap components that might be on the page
-        if (typeof bootstrap !== 'undefined') {
-            // Initialize tooltips if any
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-            
-            // Initialize popovers if any
-            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-            popoverTriggerList.map(function(popoverTriggerEl) {
-                return new bootstrap.Popover(popoverTriggerEl);
-            });
-        }
     });
 </script>
 {% endblock %}

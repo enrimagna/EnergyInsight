@@ -1,0 +1,120 @@
+{
+  "HotWater": [
+    2.56,
+    1.74,
+    3.07,
+    1.37,
+    2.46,
+    1.589,
+    0.0
+  ],
+  "InternalTemperature1": null,
+  "InternalTemperature2": null,
+  "ExternalTemperature": null,
+  "Cooling": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "Heating": [
+    0.81,
+    14.49,
+    45.35,
+    45.85,
+    22.28,
+    13.62,
+    0.0
+  ],
+  "CoP": [
+    1.8456973293768544,
+    2.3604436229205175,
+    1.8292028087567118,
+    1.625772977551885,
+    1.984236054971706,
+    2.595173910184759,
+    null
+  ],
+  "MissingSampleQuarter": [
+    null,
+    null,
+    null,
+    null
+  ],
+  "MissingSampleMonth": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "ProducedHotWater": [
+    6.22,
+    3.62,
+    7.47,
+    3.719,
+    5.98,
+    3.8,
+    0.0
+  ],
+  "ProducedCooling": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ProducedHeating": [
+    0.0,
+    34.69,
+    81.1,
+    73.05,
+    43.11,
+    35.67,
+    0.0
+  ],
+  "TotalHeatingConsumed": 142.4,
+  "TotalCoolingConsumed": 0.0,
+  "TotalHotWaterConsumed": 12.789,
+  "TotalHeatingProduced": 267.62,
+  "TotalCoolingProduced": 0.0,
+  "TotalHotWaterProduced": 30.809,
+  "AverageInternalTemperature": 0.0,
+  "AverageExternalTemperature": 0.0,
+  "Status": 0,
+  "LabelType": 1,
+  "TempLabels": null,
+  "Labels": [
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "HasZone2": false,
+  "CurrencySymbol": "kWh",
+  "FromDate": "2024-09-11T00:00:00",
+  "ToDate": "2024-09-17T00:00:00",
+  "DeviceName": "Zuby",
+  "BuildingAddress": null,
+  "BuildingCity": null,
+  "BuildingCountry": null,
+  "CustomerName": null,
+  "costs": null,
+  "TotalMinutes": 27360,
+  "MissingMinutes": 18660
+}

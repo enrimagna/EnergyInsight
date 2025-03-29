@@ -1,0 +1,35 @@
+# Project metadata
+name: "Energy Monitoring Project"
+description: "Monitors heat pump energy usage and compares costs."
+
+# Source directory for docs
+source_dir: "docs"
+
+# Output directory for generated site
+output_dir: "site"
+
+# Navigation structure
+nav:
+  - Home: "README.md"
+  - Setup: "setup.md"
+  - Data Sources: "data_sources.md"
+  - Database: "database.md"
+  - Web Apps: "web_apps.md"
+  - Deployment: "deployment.md"
+
+# Theme (assuming Windsurf supports themes)
+theme: "simple"
+
+# Markdown processing rules
+markdown:
+  # Enable code highlighting
+  highlight_code: true
+  # Allow raw HTML (e.g., for future enhancements)
+  allow_html: true
+
+# Build options
+build:
+  # Ignore non-Markdown files
+  exclude: ["*.py", "*.txt", "Dockerfile"]
+  # Generate a single-page site if preferred
+  single_page: false

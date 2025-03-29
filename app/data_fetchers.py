@@ -200,47 +200,183 @@ class MELCloudFetcher:
                 logger.warning("No daily energy consumption data found")
                 return True  # Return success but with no data
                 
-            for day_data_item in day_data:
-                # Validate day data structure
-                if 'date' not in day_data_item or 'value' not in day_data_item:
-                    logger.warning(f"Invalid day data item: {day_data_item}")
-                    continue
+            # Process and store each day's data
+            for day_entry in day_data:
+                try:
+                    # Get corresponding power data
+                    date_str = day_entry['date']
+                    energy_value = day_entry['value']
                     
-                date_str = day_data_item['date']
-                energy_consumed = day_data_item['value']
-                
-                # Find corresponding power consumption
-                power_consumption = 0.0
-                for power_day in energy_report['Power_Consumed']['Day']:
-                    if power_day.get('date') == date_str:
-                        power_consumption = power_day.get('value', 0.0)
-                        break
-                
-                # Calculate cost
-                electricity_price = float(os.getenv('ELECTRICITY_PRICE', 0.28))
-                cost = energy_consumed * electricity_price
-                
-                # Convert date string to timestamp
-                try:
-                    timestamp = datetime.strptime(date_str, '%Y-%m-%d')
-                except ValueError:
-                    logger.warning(f"Invalid date format: {date_str}")
-                    continue
-                
-                # Store in database
-                try:
-                    self.db.add_energy_data(timestamp, power_consumption, energy_consumed, cost)
-                    logger.info(f"Stored energy data for {date_str}: {energy_consumed} kWh, {power_consumption} W")
+                    # Find matching power entry for the same date
+                    power_value = None
+                    for power_entry in energy_report['Power_Consumed']['Day']:
+                        if power_entry['date'] == date_str:
+                            power_value = power_entry['value']
+                            break
+                    
+                    if power_value is None:
+                        logger.warning(f"No power data found for date {date_str}")
+                        continue
+                    
+                    # Convert date string to datetime
+                    try:
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                    except ValueError:
+                        logger.error(f"Invalid date format: {date_str}")
+                        continue
+                    
+                    # Calculate cost based on current electricity price
+                    db = self.db
+                    prices = db.get_current_prices()
+                    if prices:
+                        electricity_price = prices['electricity_price']
+                    else:
+                        # Default price if not set
+                        electricity_price = float(os.getenv('ELECTRICITY_PRICE', 0.28))
+                    
+                    cost = energy_value * electricity_price
+                    
+                    # Store in database
+                    success = db.add_energy_data(date_obj, power_value, energy_value, cost)
+                    if success:
+                        logger.info(f"Added energy data for {date_str}: Energy={energy_value}kWh, Power={power_value}W, Cost=${cost:.2f}")
+                    else:
+                        logger.info(f"Energy data for {date_str} already exists in database")
+                        
                 except Exception as e:
-                    logger.error(f"Error storing energy data: {str(e)}")
-                
-            logger.info("Energy data fetched and stored successfully")
+                    logger.error(f"Error processing day entry {day_entry}: {str(e)}")
+                    continue
+            
+            # Also process weekly data for more historical information
+            week_data = energy_report['Energy_Consumed']['Week']
+            if week_data:
+                for week_entry in week_data:
+                    try:
+                        # Skip if we already have this date from daily data
+                        date_str = week_entry['date']
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                        
+                        # Check if this date already exists in the database
+                        # (We don't have a direct method for this, so we'll add it and check the result)
+                        
+                        # Find matching power entry for the same date
+                        power_value = None
+                        for power_entry in energy_report['Power_Consumed']['Week']:
+                            if power_entry['date'] == date_str:
+                                power_value = power_entry['value']
+                                break
+                        
+                        if power_value is None:
+                            logger.warning(f"No weekly power data found for date {date_str}")
+                            continue
+                        
+                        # Calculate cost
+                        energy_value = week_entry['value']
+                        db = self.db
+                        prices = db.get_current_prices()
+                        if prices:
+                            electricity_price = prices['electricity_price']
+                        else:
+                            electricity_price = float(os.getenv('ELECTRICITY_PRICE', 0.28))
+                        
+                        cost = energy_value * electricity_price
+                        
+                        # Try to add to database (will be skipped if already exists)
+                        success = db.add_energy_data(date_obj, power_value, energy_value, cost)
+                        if success:
+                            logger.info(f"Added weekly energy data for {date_str}: Energy={energy_value}kWh, Power={power_value}W, Cost=${cost:.2f}")
+                        
+                    except Exception as e:
+                        logger.error(f"Error processing week entry {week_entry}: {str(e)}")
+                        continue
+            
             return True
             
         except Exception as e:
             logger.error(f"Error fetching energy data: {str(e)}")
-            raise  # Re-raise the exception for proper error handling in test connections
+            raise
+    
+    async def get_raw_data(self):
+        """Fetch raw data from MELCloud to inspect available fields.
+        
+        This method is useful for exploring the API and understanding what data is available.
+        Returns the complete energy report as a dictionary.
+        """
+        try:
+            # First try to import the real module
+            try:
+                import pymelcloud
+                logger.info("Using real pymelcloud library")
+                session = await pymelcloud.login(self.username, self.password)
+                if not session:
+                    logger.error("pymelcloud login returned None")
+                    raise ValueError("Failed to authenticate with MELCloud")
+            except ImportError:
+                # If not available, use mock implementation
+                logger.warning("pymelcloud not available, using mock implementation")
+                session = await mock_login(self.username, self.password)
+                
+            # Check if session contains devices
+            if not session or "devices" not in session or not session["devices"]:
+                logger.error("No devices found in MELCloud session")
+                raise ValueError("No devices found in MELCloud account")
+                
+            device = session["devices"][0]  # Assuming first device is the heat pump
+            logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
             
+            # Get device information
+            device_info = {
+                "name": getattr(device, "name", "Unknown"),
+                "serial_number": getattr(device, "serial_number", "Unknown"),
+                "power": getattr(device, "power", None),
+                "device_type": type(device).__name__
+            }
+            
+            # Get all available methods and properties
+            device_methods = [method for method in dir(device) if not method.startswith('_')]
+            
+            # Get energy report
+            try:
+                energy_report = device.energy_report()
+                logger.info("Successfully retrieved energy report")
+            except Exception as e:
+                logger.error(f"Error getting energy report: {str(e)}")
+                energy_report = {"error": str(e)}
+            
+            # Try to get other potentially useful information
+            additional_info = {}
+            for method in device_methods:
+                try:
+                    if method not in ['energy_report'] and not method.startswith('_'):
+                        attr = getattr(device, method)
+                        if callable(attr):
+                            # Skip methods that require parameters
+                            if method in ['set_power', 'set_target_temperature']:
+                                continue
+                            try:
+                                result = attr()
+                                additional_info[method] = result
+                            except:
+                                pass
+                        else:
+                            additional_info[method] = attr
+                except:
+                    pass
+            
+            # Combine all information
+            result = {
+                "device_info": device_info,
+                "device_methods": device_methods,
+                "energy_report": energy_report,
+                "additional_info": additional_info
+            }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error fetching raw data: {str(e)}")
+            return {"error": str(e)}
+
 class HomeAssistantFetcher:
     """Fetches temperature data from Home Assistant."""
     
@@ -369,3 +505,61 @@ async def fetch_all_data():
     await mel_fetcher.fetch_data()
     hass_fetcher.fetch_data()
     update_prices()
+
+import pymelcloud
+from pymelcloud import login as melcloud_login
+
+async def fetch_and_store_energy_data(start_date=None, end_date=None):
+    username = os.getenv('MELCLOUD_USERNAME')
+    password = os.getenv('MELCLOUD_PASSWORD')
+
+    if not username or not password:
+        logger.error("MELCloud credentials are not set in environment variables.")
+        return
+
+    # Default to yesterday
+    if end_date is None:
+        end_date = datetime.now() - timedelta(days=1)
+    if start_date is None:
+        start_date = end_date - timedelta(days=1)
+
+    # Convert dates to string format
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+
+    # Login to MELCloud
+    try:
+        import pymelcloud
+        session = await pymelcloud.login(username, password)
+        if not session:
+            logger.error("pymelcloud login returned None")
+            raise ValueError("Failed to authenticate with MELCloud")
+    except ImportError:
+        logger.warning("pymelcloud not available, using mock implementation")
+        session = await mock_login(username, password)
+
+    # Check if session contains devices
+    if not session or "devices" not in session or not session["devices"]:
+        logger.error("No devices found in MELCloud session")
+        raise ValueError("No devices found in MELCloud account")
+
+    device = session["devices"][0]  # Assuming first device is the heat pump
+    logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
+
+    # Fetch energy report
+    energy_report = await device.energy_report(start_date=start_date_str, end_date=end_date_str)
+
+    # Print raw response
+    print(json.dumps(energy_report, indent=2))
+
+    # Store data in the database
+    db = Database()
+    for entry in energy_report['Energy_Consumed']['Day']:
+        db.insert_energy_data(date=entry['date'], value=entry['value'])
+
+    logger.info(f"Data from {start_date_str} to {end_date_str} stored successfully.")
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(fetch_and_store_energy_data())

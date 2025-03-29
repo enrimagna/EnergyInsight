@@ -1,9 +1,10 @@
 from flask import (
-    Blueprint, render_template, request, redirect, url_for, flash
+    Blueprint, render_template, request, redirect, url_for, flash, jsonify
 )
 import os
 import asyncio
 import logging
+import datetime
 from dotenv import load_dotenv, set_key
 from app.db.models import Database
 from app.data_fetchers import update_prices
@@ -22,8 +23,80 @@ def index():
     if request.method == 'POST':
         logger.info(f"Form data keys: {list(request.form.keys())}")
         
-        # Handle price updates
-        if 'update_prices' in request.form:
+        # Handle price updates for a specific month and year
+        if 'update_monthly_price' in request.form:
+            year = request.form.get('price_year', '')
+            month = request.form.get('price_month', '')
+            electricity_price = request.form.get('electricity_price', '')
+            diesel_price = request.form.get('diesel_price', '')
+            diesel_efficiency = request.form.get('diesel_efficiency', '')
+            
+            # Log the received values for debugging
+            logger.info(f"Received monthly price update request - Year: {year}, Month: {month}, "
+                        f"Electricity: {electricity_price}, Diesel: {diesel_price}, Efficiency: {diesel_efficiency}")
+            
+            # Validate inputs
+            errors = False
+            if not year or not month or not electricity_price or not diesel_price or not diesel_efficiency:
+                flash('All fields are required', 'danger')
+                errors = True
+            else:
+                try:
+                    year = int(year)
+                    month = int(month)
+                    electricity_price = float(electricity_price)
+                    diesel_price = float(diesel_price)
+                    diesel_efficiency = float(diesel_efficiency)
+                    
+                    # Log the converted values
+                    logger.info(f"Converted values - Year: {year}, Month: {month}, "
+                                f"Electricity: {electricity_price}, Diesel: {diesel_price}, Efficiency: {diesel_efficiency}")
+                    
+                    if year < 2000 or year > 2100 or month < 1 or month > 12 or \
+                       electricity_price <= 0 or diesel_price <= 0 or not (0 < diesel_efficiency <= 1):
+                        flash('Invalid values', 'danger')
+                        errors = True
+                except ValueError:
+                    flash('Invalid numeric values', 'danger')
+                    errors = True
+            
+            if not errors:
+                try:
+                    db = Database()
+                    # Update the database with the new values directly
+                    db.update_prices(
+                        electricity_price=float(electricity_price),
+                        diesel_price=float(diesel_price),
+                        diesel_efficiency=float(diesel_efficiency),
+                        year=year,
+                        month=month
+                    )
+                    
+                    # Update current prices in .env file if this is the current month
+                    current_date = datetime.datetime.now()
+                    if year == current_date.year and month == current_date.month:
+                        dotenv_path = os.path.join(os.getcwd(), '.env')
+                        set_key(dotenv_path, 'ELECTRICITY_PRICE', str(electricity_price))
+                        set_key(dotenv_path, 'DIESEL_PRICE', str(diesel_price))
+                        set_key(dotenv_path, 'DIESEL_EFFICIENCY', str(diesel_efficiency))
+                    
+                    # Trigger recalculation of energy costs
+                    start_date = datetime.date(year, month, 1)
+                    if month == 12:
+                        end_date = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
+                    else:
+                        end_date = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
+                    
+                    db.recalculate_energy_costs(start_date, end_date)
+                    db.close_connection()
+                    
+                    flash(f'Prices for {month}/{year} updated successfully', 'success')
+                except Exception as e:
+                    logger.error(f"Error updating monthly prices: {str(e)}")
+                    flash(f'Error updating monthly prices: {str(e)}', 'danger')
+        
+        # Legacy price update (for current month)
+        elif 'update_prices' in request.form:
             electricity_price = request.form.get('electricity_price', '')
             diesel_price = request.form.get('diesel_price', '')
             diesel_efficiency = request.form.get('diesel_efficiency', '')
@@ -63,21 +136,17 @@ def index():
                     # Log the values being passed to update_prices
                     logger.info(f"Calling update_prices with - Electricity: {electricity_price}, Diesel: {diesel_price}, Efficiency: {diesel_efficiency}")
                     
-                    # Update database with the new values directly
-                    # Fix for electricity price issue: ensure all values are passed as floats
-                    update_result = update_prices(
+                    # Update database with the new values for the current month
+                    current_date = datetime.datetime.now()
+                    db = Database()
+                    db.update_prices(
                         electricity_price=float(electricity_price),
                         diesel_price=float(diesel_price),
-                        diesel_efficiency=float(diesel_efficiency)
+                        diesel_efficiency=float(diesel_efficiency),
+                        year=current_date.year,
+                        month=current_date.month
                     )
-                    
-                    # Verify the update by retrieving current prices from database
-                    db = Database()
-                    current_prices = db.get_current_prices()
-                    if current_prices:
-                        logger.info(f"Current prices in DB after update - Electricity: {current_prices['electricity_price']}, Diesel: {current_prices['diesel_price']}, Efficiency: {current_prices['diesel_efficiency']}")
-                    else:
-                        logger.warning("No price data found in database after update")
+                    db.recalculate_energy_costs()
                     db.close_connection()
                     
                     flash('Prices updated successfully', 'success')
@@ -182,19 +251,32 @@ def index():
         'hass_token': os.getenv('HASS_TOKEN', '')
     }
     
-    # Get current prices from database for comparison
+    # Get current date for the monthly price form
+    current_date = datetime.datetime.now()
+    settings['current_year'] = current_date.year
+    settings['current_month'] = current_date.month
+    
+    # Get all price records from the database
     db = Database()
-    db_prices = db.get_current_prices()
-    if db_prices:
-        db_settings = {
-            'db_electricity_price': db_prices['electricity_price'],
-            'db_diesel_price': db_prices['diesel_price'],
-            'db_diesel_efficiency': db_prices['diesel_efficiency']
-        }
-        settings.update(db_settings)
+    monthly_prices = db.get_all_prices()
     db.close_connection()
     
-    return render_template('settings/index.html', settings=settings)
+    # Format monthly prices for display
+    price_history = []
+    if monthly_prices:
+        for price in monthly_prices:
+            month_name = datetime.date(price['year'], price['month'], 1).strftime('%B')
+            price_history.append({
+                'id': price['id'],
+                'year': price['year'],
+                'month': price['month'],
+                'month_name': month_name,
+                'electricity_price': price['electricity_price'],
+                'diesel_price': price['diesel_price'],
+                'diesel_efficiency': price['diesel_efficiency']
+            })
+    
+    return render_template('settings/index.html', settings=settings, price_history=price_history)
 
 @bp.route('/test-connection', methods=['POST'])
 def test_connection():

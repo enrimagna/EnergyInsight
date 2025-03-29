@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Temperature Data - Energy Insight{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Temperature Data</h1>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary">
+        <i class="bi bi-speedometer2"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Time Range</h5>
+            </div>
+            <div class="card-body">
+                <div class="btn-group" role="group" aria-label="Time range">
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="1">Last 24h</button>
+                    <button type="button" class="btn btn-outline-primary time-range active" data-days="7">Last Week</button>
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="30">Last Month</button>
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="90">Last 3 Months</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Temperature Trends</h5>
+            </div>
+            <div class="card-body">
+                <div id="temp-graph" class="graph-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Temperature Analysis</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    This page shows the temperature trends from your Home Assistant system. 
+                    The data includes both indoor and outdoor temperatures, allowing you to 
+                    analyze the relationship between them and your energy usage.
+                </p>
+                <p>
+                    Temperature data is important for understanding your heating efficiency. 
+                    A greater difference between indoor and outdoor temperatures typically 
+                    requires more energy for heating.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Parse graph data from server
+    var graphData = JSON.parse('{{ graphs|tojson|safe }}');
+    
+    // Render initial graph
+    if (graphData.temp_graph) {
+        Plotly.newPlot('temp-graph', JSON.parse(graphData.temp_graph));
+    }
+    
+    // Handle time range buttons
+    var timeRangeButtons = document.querySelectorAll('.time-range');
+    Array.prototype.forEach.call(timeRangeButtons, function(button) {
+        button.addEventListener('click', function() {
+            // Update active button
+            Array.prototype.forEach.call(timeRangeButtons, function(b) {
+                b.classList.remove('active');
+            });
+            this.classList.add('active');
+            
+            // Get selected days
+            var days = this.getAttribute('data-days');
+            
+            // Reload the page to get updated graphs
+            window.location.href = '{{ url_for("temperature.index") }}?days=' + days;
+        });
+    });
+})();
+</script>
+{% endblock %}
