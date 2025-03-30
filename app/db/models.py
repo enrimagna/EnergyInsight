@@ -140,37 +140,69 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
+        # Validation: Ensure timestamp is not None
+        if timestamp is None:
+            logger.error("Cannot add temperature data: timestamp is None")
+            return False
+            
         # Convert timestamp to date
-        if isinstance(timestamp, str):
-            date = datetime.datetime.fromisoformat(timestamp).date()
-        elif isinstance(timestamp, datetime.datetime):
-            date = timestamp.date()
-        else:
-            date = timestamp  # Assume it's already a date
-        
+        date = None
         try:
-            # First check if a record exists for this date
-            cursor.execute('SELECT id FROM energy_data WHERE date = ?', (date,))
+            if isinstance(timestamp, str):
+                date = datetime.datetime.fromisoformat(timestamp).date()
+            elif isinstance(timestamp, datetime.datetime):
+                date = timestamp.date()
+            else:
+                date = timestamp  # Assume it's already a date
+        except Exception as e:
+            logger.error(f"Failed to convert timestamp to date: {str(e)}")
+            return False
+            
+        # Validation: Ensure date is not None after conversion
+        if date is None:
+            logger.error("Cannot add temperature data: date is None after conversion")
+            return False
+            
+        # Validation: Ensure outdoor_temp is not None
+        if outdoor_temp is None:
+            logger.error("Cannot add temperature data: outdoor_temp is None")
+            return False
+            
+        try:
+            # Check if a record exists for this date
+            cursor.execute('SELECT id, outdoor_temp FROM energy_data WHERE date = ?', (date,))
             existing = cursor.fetchone()
             
             if existing:
+                # Validation: Check if the data is actually different
+                if existing['outdoor_temp'] == outdoor_temp:
+                    logger.info(f"Skipping update for {date}: temperature value unchanged ({outdoor_temp}°C)")
+                    return True
+                    
                 # Update existing record
                 cursor.execute('''
                 UPDATE energy_data 
                 SET outdoor_temp = ?
                 WHERE date = ?
                 ''', (outdoor_temp, date))
+                logger.info(f"Updated temperature for {date}: {outdoor_temp}°C")
             else:
                 # Insert new record with just temperature data
                 cursor.execute('''
                 INSERT INTO energy_data (date, outdoor_temp)
                 VALUES (?, ?)
                 ''', (date, outdoor_temp))
+                logger.info(f"Added new temperature record for {date}: {outdoor_temp}°C")
                 
             conn.commit()
             return True
-        except sqlite3.IntegrityError:
-            # Record already exists
+        except sqlite3.IntegrityError as e:
+            logger.error(f"Database integrity error adding temperature data: {str(e)}")
+            conn.rollback()
+            return False
+        except Exception as e:
+            logger.error(f"Error adding temperature data: {str(e)}")
+            conn.rollback()
             return False
     
     def update_prices(self, electricity_price, diesel_price, diesel_efficiency, year=None, month=None):
