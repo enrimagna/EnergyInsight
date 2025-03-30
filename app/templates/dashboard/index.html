@@ -3,57 +3,54 @@
 {% block title %}Dashboard - Energy Insight{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Energy Dashboard</h1>
-    <div>
-        <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-gear"></i> Settings
-        </a>
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Dashboard Energetico</h1>
     </div>
 </div>
 
 <div class="card mb-4">
     <div class="card-header">
-        <h5 class="card-title mb-0">Dashboard Controls</h5>
+        <h5 class="card-title mb-0">Controlli Dashboard</h5>
     </div>
     <div class="card-body">
         <form id="dashboard-form" method="get" action="{{ url_for('dashboard.index') }}">
             <div class="row">
                 <!-- Time Range Selector -->
                 <div class="col-md-4 mb-3">
-                    <label for="time-range" class="form-label">Time Range</label>
+                    <label for="time-range" class="form-label">Intervallo di Tempo</label>
                     <select class="form-select" id="time-range" name="time_range">
-                        <option value="ytd" {% if time_range == 'ytd' %}selected{% endif %}>Year to Date</option>
-                        <option value="7d" {% if time_range == '7d' %}selected{% endif %}>Last 7 days</option>
-                        <option value="30d" {% if time_range == '30d' %}selected{% endif %}>Last 30 days</option>
-                        <option value="90d" {% if time_range == '90d' %}selected{% endif %}>Last 90 days</option>
-                        <option value="1y" {% if time_range == '1y' %}selected{% endif %}>Last year</option>
-                        <option value="2y" {% if time_range == '2y' %}selected{% endif %}>Last 2 years</option>
-                        <option value="5y" {% if time_range == '5y' %}selected{% endif %}>Last 5 years</option>
-                        <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Custom date range</option>
+                        <option value="ytd" {% if time_range == 'ytd' %}selected{% endif %}>Anno in corso</option>
+                        <option value="7d" {% if time_range == '7d' %}selected{% endif %}>Ultimi 7 giorni</option>
+                        <option value="30d" {% if time_range == '30d' %}selected{% endif %}>Ultimi 30 giorni</option>
+                        <option value="90d" {% if time_range == '90d' %}selected{% endif %}>Ultimi 90 giorni</option>
+                        <option value="1y" {% if time_range == '1y' %}selected{% endif %}>Ultimo anno</option>
+                        <option value="2y" {% if time_range == '2y' %}selected{% endif %}>Ultimi 2 anni</option>
+                        <option value="5y" {% if time_range == '5y' %}selected{% endif %}>Ultimi 5 anni</option>
+                        <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Intervallo personalizzato</option>
                     </select>
                 </div>
                 
                 <!-- Data Aggregation -->
                 <div class="col-md-4 mb-3">
-                    <label for="aggregation" class="form-label">Data Aggregation</label>
+                    <label for="aggregation" class="form-label">Aggregazione Dati</label>
                     <select class="form-select" id="aggregation" name="aggregation">
                         <option value="auto" {% if not aggregation or aggregation == 'auto' %}selected{% endif %}>Auto</option>
-                        <option value="day" {% if aggregation == 'day' %}selected{% endif %}>Daily</option>
-                        <option value="week" {% if aggregation == 'week' %}selected{% endif %}>Weekly</option>
-                        <option value="month" {% if aggregation == 'month' %}selected{% endif %}>Monthly</option>
-                        <option value="quarter" {% if aggregation == 'quarter' %}selected{% endif %}>Quarterly</option>
-                        <option value="year" {% if aggregation == 'year' %}selected{% endif %}>Yearly</option>
+                        <option value="day" {% if aggregation == 'day' %}selected{% endif %}>Giornaliera</option>
+                        <option value="week" {% if aggregation == 'week' %}selected{% endif %}>Settimanale</option>
+                        <option value="month" {% if aggregation == 'month' %}selected{% endif %}>Mensile</option>
+                        <option value="quarter" {% if aggregation == 'quarter' %}selected{% endif %}>Trimestrale</option>
+                        <option value="year" {% if aggregation == 'year' %}selected{% endif %}>Annuale</option>
                     </select>
                 </div>
                 
                 <!-- Energy Type -->
                 <div class="col-md-4 mb-3">
-                    <label for="energy-type" class="form-label">Energy Type</label>
+                    <label for="energy-type" class="form-label">Tipo di Energia</label>
                     <select class="form-select" id="energy-type" name="energy_type">
-                        <option value="total" {% if energy_type == 'total' %}selected{% endif %}>Total</option>
-                        <option value="heating" {% if energy_type == 'heating' %}selected{% endif %}>Heating</option>
-                        <option value="hot_water" {% if energy_type == 'hot_water' %}selected{% endif %}>Hot Water</option>
+                        <option value="total" {% if energy_type == 'total' %}selected{% endif %}>Totale</option>
+                        <option value="heating" {% if energy_type == 'heating' %}selected{% endif %}>Riscaldamento</option>
+                        <option value="hot_water" {% if energy_type == 'hot_water' %}selected{% endif %}>Acqua Calda</option>
                     </select>
                 </div>
             </div>
@@ -61,15 +58,15 @@
             <!-- Custom Date Range Inputs (initially hidden) -->
             <div class="row custom-date-range" {% if time_range != 'custom' %}style="display: none;"{% endif %}>
                 <div class="col-md-4 mb-3">
-                    <label for="start-date" class="form-label">Start Date</label>
+                    <label for="start-date" class="form-label">Data Inizio</label>
                     <input type="date" class="form-control" id="start-date" name="start_date" value="{{ start_date|string }}">
                 </div>
                 <div class="col-md-4 mb-3">
-                    <label for="end-date" class="form-label">End Date</label>
+                    <label for="end-date" class="form-label">Data Fine</label>
                     <input type="date" class="form-control" id="end-date" name="end_date" value="{{ end_date|string }}">
                 </div>
                 <div class="col-md-4 d-flex align-items-end mb-3">
-                    <button type="submit" class="btn btn-primary">Apply</button>
+                    <button type="submit" class="btn btn-primary">Applica</button>
                 </div>
             </div>
         </form>
@@ -81,11 +78,11 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Energy</h5>
+                <h5 class="card-title mb-0">Energia</h5>
                 <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-outline-secondary energy-view active" data-view="consumption">Consumption</button>
-                    <button type="button" class="btn btn-outline-secondary energy-view" data-view="production">Production</button>
-                    <button type="button" class="btn btn-outline-secondary energy-view" data-view="both">Both</button>
+                    <button type="button" class="btn btn-outline-secondary energy-view active" data-view="consumption">Consumo</button>
+                    <button type="button" class="btn btn-outline-secondary energy-view" data-view="production">Produzione</button>
+                    <button type="button" class="btn btn-outline-secondary energy-view" data-view="both">Entrambi</button>
                 </div>
             </div>
             <div class="card-body">
@@ -95,9 +92,9 @@
                 <!-- Debug info -->
                 <div class="mt-2 small text-muted">
                     {% if 'energy_chart' in charts %}
-                    <p>Chart data available</p>
+                    <p>Dati del grafico disponibili</p>
                     {% else %}
-                    <p>No energy chart data available</p>
+                    <p>Nessun dato disponibile per il grafico energetico</p>
                     {% endif %}
                 </div>
             </div>
@@ -110,7 +107,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Heat Pump Efficiency (COP)</h5>
+                <h5 class="card-title mb-0">Efficienza Pompa di Calore (COP)</h5>
             </div>
             <div class="card-body">
                 <div class="chart-container" style="position: relative; height:400px;">
@@ -119,9 +116,9 @@
                 <!-- Debug info -->
                 <div class="mt-2 small text-muted">
                     {% if 'cop_chart' in charts %}
-                    <p>Chart data available</p>
+                    <p>Dati del grafico disponibili</p>
                     {% else %}
-                    <p>No COP chart data available</p>
+                    <p>Nessun dato disponibile per il grafico COP</p>
                     {% endif %}
                 </div>
             </div>
@@ -134,7 +131,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Cost Comparison: Heat Pump vs Diesel</h5>
+                <h5 class="card-title mb-0">Confronto Costi: Pompa di Calore vs Diesel</h5>
             </div>
             <div class="card-body">
                 <div class="chart-container" style="position: relative; height:400px;">
@@ -143,9 +140,9 @@
                 <!-- Debug info -->
                 <div class="mt-2 small text-muted">
                     {% if 'cost_chart' in charts %}
-                    <p>Chart data available</p>
+                    <p>Dati del grafico disponibili</p>
                     {% else %}
-                    <p>No cost chart data available</p>
+                    <p>Nessun dato disponibile per il grafico dei costi</p>
                     {% endif %}
                 </div>
             </div>
@@ -158,7 +155,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Temperature Trends</h5>
+                <h5 class="card-title mb-0">Andamento Temperature</h5>
             </div>
             <div class="card-body">
                 <div class="chart-container" style="position: relative; height:400px;">
@@ -167,9 +164,9 @@
                 <!-- Debug info -->
                 <div class="mt-2 small text-muted">
                     {% if 'temp_chart' in charts %}
-                    <p>Chart data available</p>
+                    <p>Dati del grafico disponibili</p>
                     {% else %}
-                    <p>No temperature chart data available</p>
+                    <p>Nessun dato disponibile per il grafico delle temperature</p>
                     {% endif %}
                 </div>
             </div>
@@ -184,13 +181,13 @@
     // Parse chart data from server
     var chartData = {{ charts|tojson|safe }};
     
-    console.log("Chart data received:", chartData);
+    console.log("Dati del grafico ricevuti:", chartData);
     
     // Render energy chart
     if (chartData.energy_chart) {
         try {
             var energyChartConfig = JSON.parse(chartData.energy_chart);
-            console.log("Energy chart data parsed successfully");
+            console.log("Dati del grafico energetico parsati con successo");
             var energyCtx = document.getElementById('energy-chart').getContext('2d');
             var energyChart = new Chart(energyCtx, energyChartConfig);
             
@@ -203,78 +200,83 @@
                     });
                     this.classList.add('active');
                     
+                    // Update chart data based on view
                     var view = this.getAttribute('data-view');
                     
-                    // Update chart visibility based on view
+                    // Toggle datasets visibility based on view
                     if (view === 'consumption') {
-                        energyChart.data.datasets[0].hidden = false;
-                        energyChart.data.datasets[1].hidden = true;
+                        energyChart.data.datasets.forEach(function(dataset) {
+                            dataset.hidden = dataset.label.toLowerCase().includes('production');
+                        });
                     } else if (view === 'production') {
-                        energyChart.data.datasets[0].hidden = true;
-                        energyChart.data.datasets[1].hidden = false;
-                    } else { // both
-                        energyChart.data.datasets[0].hidden = false;
-                        energyChart.data.datasets[1].hidden = false;
+                        energyChart.data.datasets.forEach(function(dataset) {
+                            dataset.hidden = !dataset.label.toLowerCase().includes('production');
+                        });
+                    } else {
+                        // 'both' view - show all
+                        energyChart.data.datasets.forEach(function(dataset) {
+                            dataset.hidden = false;
+                        });
                     }
                     
                     energyChart.update();
                 });
             });
         } catch (e) {
-            console.error("Error parsing energy chart data:", e);
-            document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-danger">Error loading energy chart: ' + e.message + '</div>';
+            console.error("Errore durante il parsing dei dati del grafico energetico:", e);
+            document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico energetico: ' + e.message + '</div>';
         }
     } else {
-        console.warn("No energy chart data available");
-        document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-warning">No energy data available</div>';
+        console.warn("Nessun dato disponibile per il grafico energetico");
+        document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico energetico</div>';
     }
     
     // Render COP chart
     if (chartData.cop_chart) {
         try {
             var copChartConfig = JSON.parse(chartData.cop_chart);
-            console.log("COP chart data parsed successfully");
+            console.log("Dati del grafico COP parsati con successo");
             var copCtx = document.getElementById('cop-chart').getContext('2d');
             new Chart(copCtx, copChartConfig);
         } catch (e) {
-            console.error("Error parsing COP chart data:", e);
-            document.getElementById('cop-chart').parentNode.innerHTML = '<div class="alert alert-danger">Error loading COP chart: ' + e.message + '</div>';
+            console.error("Errore durante il parsing dei dati del grafico COP:", e);
+            document.getElementById('cop-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico COP: ' + e.message + '</div>';
         }
     } else {
-        console.warn("No COP chart data available");
-        document.getElementById('cop-chart').parentNode.innerHTML = '<div class="alert alert-warning">No COP data available</div>';
+        console.warn("Nessun dato disponibile per il grafico COP");
+        document.getElementById('cop-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico COP</div>';
     }
     
     // Render cost chart
     if (chartData.cost_chart) {
         try {
             var costChartConfig = JSON.parse(chartData.cost_chart);
-            console.log("Cost chart data parsed successfully");
+            console.log("Dati del grafico dei costi parsati con successo");
             var costCtx = document.getElementById('cost-chart').getContext('2d');
             new Chart(costCtx, costChartConfig);
         } catch (e) {
-            console.error("Error parsing cost chart data:", e);
-            document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-danger">Error loading cost chart: ' + e.message + '</div>';
+            console.error("Errore durante il parsing dei dati del grafico dei costi:", e);
+            document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico dei costi: ' + e.message + '</div>';
         }
     } else {
-        console.warn("No cost chart data available");
-        document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-warning">No cost data available</div>';
+        console.warn("Nessun dato disponibile per il grafico dei costi");
+        document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico dei costi</div>';
     }
     
     // Render temperature chart
     if (chartData.temp_chart) {
         try {
             var tempChartConfig = JSON.parse(chartData.temp_chart);
-            console.log("Temperature chart data parsed successfully");
+            console.log("Dati del grafico delle temperature parsati con successo");
             var tempCtx = document.getElementById('temp-chart').getContext('2d');
             new Chart(tempCtx, tempChartConfig);
         } catch (e) {
-            console.error("Error parsing temperature chart data:", e);
-            document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-danger">Error loading temperature chart: ' + e.message + '</div>';
+            console.error("Errore durante il parsing dei dati del grafico delle temperature:", e);
+            document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico delle temperature: ' + e.message + '</div>';
         }
     } else {
-        console.warn("No temperature chart data available");
-        document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-warning">No temperature data available</div>';
+        console.warn("Nessun dato disponibile per il grafico delle temperature");
+        document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico delle temperature</div>';
     }
     
     // Handle time range changes

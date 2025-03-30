@@ -1,27 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Temperature Data - Energy Insight{% endblock %}
+{% block title %}Dati Temperatura - Energy Insight{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Temperature Data</h1>
-    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary">
-        <i class="bi bi-speedometer2"></i> Back to Dashboard
-    </a>
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Dati Temperatura</h1>
+    </div>
 </div>
 
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Time Range</h5>
+                <h5 class="card-title mb-0">Intervallo di Tempo</h5>
             </div>
             <div class="card-body">
-                <div class="btn-group" role="group" aria-label="Time range">
-                    <button type="button" class="btn btn-outline-primary time-range" data-days="1">Last 24h</button>
-                    <button type="button" class="btn btn-outline-primary time-range active" data-days="7">Last Week</button>
-                    <button type="button" class="btn btn-outline-primary time-range" data-days="30">Last Month</button>
-                    <button type="button" class="btn btn-outline-primary time-range" data-days="90">Last 3 Months</button>
+                <div class="btn-group" role="group" aria-label="Intervallo di tempo">
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="1">Ultime 24h</button>
+                    <button type="button" class="btn btn-outline-primary time-range active" data-days="7">Ultima Settimana</button>
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="30">Ultimo Mese</button>
+                    <button type="button" class="btn btn-outline-primary time-range" data-days="90">Ultimi 3 Mesi</button>
                 </div>
             </div>
         </div>
@@ -32,7 +31,7 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Temperature Trends</h5>
+                <h5 class="card-title mb-0">Andamento Temperature</h5>
             </div>
             <div class="card-body">
                 <div id="temp-graph" class="graph-container"></div>
@@ -45,18 +44,18 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Temperature Analysis</h5>
+                <h5 class="card-title mb-0">Analisi Temperature</h5>
             </div>
             <div class="card-body">
                 <p>
-                    This page shows the temperature trends from your Home Assistant system. 
-                    The data includes both indoor and outdoor temperatures, allowing you to 
-                    analyze the relationship between them and your energy usage.
+                    Questa pagina mostra l'andamento delle temperature dal tuo sistema Home Assistant. 
+                    I dati includono sia le temperature interne che esterne, permettendoti di 
+                    analizzare la relazione tra queste e il tuo consumo energetico.
                 </p>
                 <p>
-                    Temperature data is important for understanding your heating efficiency. 
-                    A greater difference between indoor and outdoor temperatures typically 
-                    requires more energy for heating.
+                    I dati di temperatura sono importanti per comprendere l'efficienza del riscaldamento. 
+                    Una maggiore differenza tra le temperature interne ed esterne tipicamente 
+                    richiede più energia per il riscaldamento.
                 </p>
             </div>
         </div>

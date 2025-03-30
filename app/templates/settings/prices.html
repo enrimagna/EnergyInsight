@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Impostazioni - Energy Insight{% endblock %}
+{% block title %}Prezzi - Energy Insight{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h1 class="mb-4">Impostazioni</h1>
+        <h1 class="mb-4">Impostazioni Prezzi</h1>
     </div>
 </div>
 
@@ -126,117 +126,6 @@
                 {% endif %}
             </div>
         </div>
-
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">Impostazioni Fonte Dati</h5>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="melcloud_username" class="form-label">Username MELCloud:</label>
-                        <input type="email" class="form-control" id="melcloud_username" 
-                            name="melcloud_username" value="{{ settings.melcloud_username }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="melcloud_password" class="form-label">Password MELCloud:</label>
-                        <input type="password" class="form-control" id="melcloud_password" 
-                            name="melcloud_password" value="{{ settings.melcloud_password }}" required>
-                    </div>
-                    <button type="submit" name="update_melcloud" class="btn btn-primary mb-3 w-100">
-                        <i class="bi bi-save"></i> Salva Credenziali MELCloud
-                    </button>
-                </form>
-                <form method="post" action="{{ url_for('settings.test_connection') }}">
-                    <input type="hidden" name="service" value="melcloud">
-                    <button type="submit" class="btn btn-outline-primary w-100">
-                        <i class="bi bi-check-circle"></i> Testa Connessione MELCloud
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">Impostazioni Home Assistant</h5>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="hass_url" class="form-label">URL Home Assistant:</label>
-                        <input type="url" class="form-control" id="hass_url" 
-                            name="hass_url" value="{{ settings.hass_url }}" required
-                            placeholder="http://your-homeassistant:8123">
-                    </div>
-                    <div class="mb-3">
-                        <label for="hass_token" class="form-label">Token di Accesso Home Assistant:</label>
-                        <input type="password" class="form-control" id="hass_token" 
-                            name="hass_token" value="{{ settings.hass_token }}" required>
-                    </div>
-                    <button type="submit" name="update_homeassistant" class="btn btn-primary mb-3 w-100">
-                        <i class="bi bi-save"></i> Salva Impostazioni Home Assistant
-                    </button>
-                </form>
-                <form method="post" action="{{ url_for('settings.test_connection') }}">
-                    <input type="hidden" name="service" value="homeassistant">
-                    <button type="submit" class="btn btn-outline-primary w-100">
-                        <i class="bi bi-check-circle"></i> Testa Connessione Home Assistant
-                    </button>
-                </form>
-            </div>
-        </div>
     </div>
 </div>
-
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">Informazioni sull'Applicazione</h5>
-            </div>
-            <div class="card-body">
-                <p>
-                    <strong>Energy Insight</strong> è un'applicazione web che monitora il consumo energetico della tua pompa di calore e confronta i costi con i metodi di riscaldamento tradizionali.
-                </p>
-                <p>
-                    <strong>Fonti dei dati:</strong>
-                    <ul>
-                        <li>MELCloud API - Per i dati energetici della pompa di calore</li>
-                        <li>Home Assistant - Per i dati di temperatura</li>
-                    </ul>
-                </p>
-                <p>
-                    <strong>Grafici:</strong>
-                    <ul>
-                        <li>Consumo energetico e produzione - Mostra il consumo energetico nel tempo</li>
-                        <li>Efficienza della pompa di calore (COP) - Mostra il coefficiente di prestazione</li>
-                        <li>Confronto dei costi - Confronta i costi della pompa di calore con quelli del riscaldamento tradizionale</li>
-                        <li>Tendenze della temperatura - Mostra le temperature interne ed esterne</li>
-                    </ul>
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize form elements
-        var formInputs = document.querySelectorAll('input, select, textarea');
-        formInputs.forEach(function(input) {
-            input.addEventListener('change', function() {
-                if (this.value) {
-                    this.classList.add('is-valid');
-                }
-            });
-            
-            // Handle autofilled inputs
-            if (input.value) {
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        });
-    });
-</script>
 {% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Connessioni - Energy Insight{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Impostazioni Connessioni</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Impostazioni Fonte Dati</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="melcloud_username" class="form-label">Username MELCloud:</label>
+                        <input type="email" class="form-control" id="melcloud_username" 
+                            name="melcloud_username" value="{{ settings.melcloud_username }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="melcloud_password" class="form-label">Password MELCloud:</label>
+                        <input type="password" class="form-control" id="melcloud_password" 
+                            name="melcloud_password" value="{{ settings.melcloud_password }}" required>
+                    </div>
+                    <button type="submit" name="update_melcloud" class="btn btn-primary mb-3 w-100">
+                        <i class="bi bi-save"></i> Salva Credenziali MELCloud
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('settings.test_connection') }}">
+                    <input type="hidden" name="service" value="melcloud">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-check-circle"></i> Testa Connessione MELCloud
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Impostazioni Home Assistant</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="hass_url" class="form-label">URL Home Assistant:</label>
+                        <input type="url" class="form-control" id="hass_url" 
+                            name="hass_url" value="{{ settings.hass_url }}" required
+                            placeholder="http://your-homeassistant:8123">
+                    </div>
+                    <div class="mb-3">
+                        <label for="hass_token" class="form-label">Token di Accesso Home Assistant:</label>
+                        <input type="password" class="form-control" id="hass_token" 
+                            name="hass_token" value="{{ settings.hass_token }}" required>
+                    </div>
+                    <button type="submit" name="update_homeassistant" class="btn btn-primary mb-3 w-100">
+                        <i class="bi bi-save"></i> Salva Impostazioni Home Assistant
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('settings.test_connection') }}">
+                    <input type="hidden" name="service" value="homeassistant">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-check-circle"></i> Testa Connessione Home Assistant
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
