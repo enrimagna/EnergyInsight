@@ -703,6 +703,35 @@ def index():
         'end_date': end_date
     }
     
+    # Calculate summary values for dashboard cards
+    if energy_data:
+        # Total energy consumed for the selected timeframe
+        total_energy_consumed = sum(float(row[1] or 0) for row in energy_data)
+        context['total_energy_consumed'] = round(total_energy_consumed, 2)
+        
+        # Total cost for the selected timeframe
+        total_cost = sum(float(row[5] or 0) for row in energy_data if row[5] is not None)
+        context['total_cost'] = round(total_cost, 2)
+        
+        # Calculate equivalent diesel cost
+        diesel_cost = db.calculate_diesel_cost(start_date, end_date)
+        context['diesel_cost'] = round(diesel_cost, 2)
+        
+        # Calculate savings
+        if diesel_cost > 0:
+            savings = diesel_cost - total_cost
+            savings_percentage = (savings / diesel_cost) * 100 if diesel_cost > 0 else 0
+            context['savings'] = round(savings, 2)
+            context['savings_percentage'] = round(savings_percentage, 1)
+    
+    # Calculate average temperature
+    if temp_data:
+        # Filter out None values
+        valid_temps = [float(row[1]) for row in temp_data if row[1] is not None]
+        if valid_temps:
+            avg_temp = sum(valid_temps) / len(valid_temps)
+            context['avg_temperature'] = round(avg_temp, 1)
+    
     # Clean up
     db.close_connection()
     

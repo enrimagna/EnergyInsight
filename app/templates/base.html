@@ -552,6 +552,122 @@
             var commonFilterForm = document.getElementById('common-filter-form');
             
             if (commonFilterForm) {
+                // Function to check if URL has filter parameters
+                function hasFilterParams() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    return urlParams.has('time_range') || 
+                           urlParams.has('aggregation') || 
+                           urlParams.has('energy_type') || 
+                           urlParams.has('start_date') || 
+                           urlParams.has('end_date');
+                }
+                
+                // Function to apply stored filters and redirect if needed
+                function applyStoredFilters() {
+                    // Only apply stored filters if the URL doesn't already have filter parameters
+                    if (!hasFilterParams()) {
+                        var timeRange = localStorage.getItem('energy_insight_time_range');
+                        var aggregation = localStorage.getItem('energy_insight_aggregation');
+                        var energyType = localStorage.getItem('energy_insight_energy_type');
+                        var startDate = localStorage.getItem('energy_insight_start_date');
+                        var endDate = localStorage.getItem('energy_insight_end_date');
+                        
+                        // Check if we have stored filters
+                        if (timeRange || aggregation || energyType) {
+                            // Build query parameters
+                            var params = new URLSearchParams();
+                            
+                            if (timeRange) params.append('time_range', timeRange);
+                            if (aggregation) params.append('aggregation', aggregation);
+                            if (energyType) params.append('energy_type', energyType);
+                            
+                            // Add date parameters if time range is custom
+                            if (timeRange === 'custom' && startDate && endDate) {
+                                params.append('start_date', startDate);
+                                params.append('end_date', endDate);
+                            }
+                            
+                            // Redirect to the same page with the stored filter parameters
+                            if (params.toString()) {
+                                window.location.href = window.location.pathname + '?' + params.toString();
+                                return true; // Indicate that we're redirecting
+                            }
+                        }
+                    }
+                    return false; // No redirect needed
+                }
+                
+                // Apply stored filters on page load (if needed)
+                if (!applyStoredFilters()) {
+                    // Only load saved filters for form display if we're not redirecting
+                    loadSavedFilters();
+                }
+                
+                // Load saved filter values from localStorage on page load
+                function loadSavedFilters() {
+                    // Time range
+                    var timeRangeSelect = document.getElementById('time-range');
+                    var savedTimeRange = localStorage.getItem('energy_insight_time_range');
+                    if (timeRangeSelect && savedTimeRange) {
+                        timeRangeSelect.value = savedTimeRange;
+                        
+                        // Handle custom date range display
+                        var customDateRange = document.querySelector('.custom-date-range');
+                        if (savedTimeRange === 'custom') {
+                            customDateRange.style.display = 'block';
+                            
+                            // Load saved custom dates
+                            var startDateInput = document.getElementById('start-date');
+                            var endDateInput = document.getElementById('end-date');
+                            var savedStartDate = localStorage.getItem('energy_insight_start_date');
+                            var savedEndDate = localStorage.getItem('energy_insight_end_date');
+                            
+                            if (startDateInput && savedStartDate) {
+                                startDateInput.value = savedStartDate;
+                            }
+                            
+                            if (endDateInput && savedEndDate) {
+                                endDateInput.value = savedEndDate;
+                            }
+                        } else {
+                            if (customDateRange) {
+                                customDateRange.style.display = 'none';
+                            }
+                        }
+                    }
+                    
+                    // Aggregation
+                    var aggregationSelect = document.getElementById('aggregation');
+                    var savedAggregation = localStorage.getItem('energy_insight_aggregation');
+                    var isAutoAggregation = document.getElementById('is-auto-aggregation');
+                    
+                    if (aggregationSelect && savedAggregation) {
+                        aggregationSelect.value = savedAggregation;
+                        
+                        // Update the data-was-auto attribute
+                        if (savedAggregation === 'auto') {
+                            aggregationSelect.setAttribute('data-was-auto', 'true');
+                            if (isAutoAggregation) {
+                                isAutoAggregation.value = 'true';
+                            }
+                        } else {
+                            aggregationSelect.setAttribute('data-was-auto', 'false');
+                            if (isAutoAggregation) {
+                                isAutoAggregation.value = 'false';
+                            }
+                        }
+                    }
+                    
+                    // Energy type
+                    var savedEnergyType = localStorage.getItem('energy_insight_energy_type');
+                    if (savedEnergyType) {
+                        var energyTypeInput = document.getElementById('energy-type-' + savedEnergyType);
+                        if (energyTypeInput) {
+                            energyTypeInput.checked = true;
+                        }
+                    }
+                }
+                
                 // Handle time range changes
                 var timeRangeSelect = document.getElementById('time-range');
                 if (timeRangeSelect) {
@@ -560,6 +676,9 @@
                         var customDateRange = document.querySelector('.custom-date-range');
                         var aggregationSelect = document.getElementById('aggregation');
                         var isAutoAggregation = document.getElementById('is-auto-aggregation');
+                        
+                        // Save to localStorage
+                        localStorage.setItem('energy_insight_time_range', selectedValue);
                         
                         if (selectedValue === 'custom') {
                             customDateRange.style.display = 'block';
@@ -575,6 +694,26 @@
                             // Submit the form
                             commonFilterForm.submit();
                         }
+                    });
+                }
+                
+                // Handle custom date changes
+                var startDateInput = document.getElementById('start-date');
+                var endDateInput = document.getElementById('end-date');
+                var applyDateRangeBtn = document.getElementById('apply-date-range');
+                
+                if (startDateInput && endDateInput && applyDateRangeBtn) {
+                    startDateInput.addEventListener('change', function() {
+                        localStorage.setItem('energy_insight_start_date', this.value);
+                    });
+                    
+                    endDateInput.addEventListener('change', function() {
+                        localStorage.setItem('energy_insight_end_date', this.value);
+                    });
+                    
+                    applyDateRangeBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        commonFilterForm.submit();
                     });
                 }
                 
@@ -598,6 +737,9 @@
                             document.getElementById('is-auto-aggregation').value = 'false';
                         }
                         
+                        // Save to localStorage
+                        localStorage.setItem('energy_insight_aggregation', this.value);
+                        
                         // Submit the form
                         commonFilterForm.submit();
                     });
@@ -607,8 +749,33 @@
                 var energyTypeInputs = document.querySelectorAll('input[name="energy_type"]');
                 energyTypeInputs.forEach(function(input) {
                     input.addEventListener('change', function() {
+                        // Save to localStorage
+                        localStorage.setItem('energy_insight_energy_type', this.value);
+                        
                         commonFilterForm.submit();
                     });
+                });
+                
+                // Handle form submission to ensure all values are saved
+                commonFilterForm.addEventListener('submit', function() {
+                    // Save all current values to localStorage
+                    var timeRange = document.getElementById('time-range').value;
+                    localStorage.setItem('energy_insight_time_range', timeRange);
+                    
+                    var aggregation = document.getElementById('aggregation').value;
+                    localStorage.setItem('energy_insight_aggregation', aggregation);
+                    
+                    var checkedEnergyType = document.querySelector('input[name="energy_type"]:checked');
+                    if (checkedEnergyType) {
+                        localStorage.setItem('energy_insight_energy_type', checkedEnergyType.value);
+                    }
+                    
+                    if (timeRange === 'custom') {
+                        var startDate = document.getElementById('start-date').value;
+                        var endDate = document.getElementById('end-date').value;
+                        localStorage.setItem('energy_insight_start_date', startDate);
+                        localStorage.setItem('energy_insight_end_date', endDate);
+                    }
                 });
             }
         });

@@ -11,17 +11,53 @@
 {% endblock %}
 
 {% block content %}
-<!-- Cost Comparison Chart -->
+<!-- Cost Comparison Section -->
 <div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
+    <!-- Chart on the left -->
+    <div class="col-md-8">
+        <div class="card h-100">
             <div class="card-header">
                 <h5 class="card-title mb-0">Confronto Costi: Pompa di Calore vs Diesel</h5>
             </div>
             <div class="card-body d-flex justify-content-center">
-                <div class="chart-container" style="position: relative; height:400px; width: 90%;">
+                <div class="chart-container" style="position: relative; height:400px; width: 100%;">
                     <canvas id="cost-chart"></canvas>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary box on the right -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Riepilogo Costi Totali</h5>
+            </div>
+            <div class="card-body">
+                {% if charts.savings %}
+                <div class="text-center mb-4">
+                    <i class="bi bi-piggy-bank text-success" style="font-size: 2.5rem;"></i>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-muted">Costo Totale Pompa di Calore</h6>
+                    <h3 class="text-primary">{{ charts.savings.cumulative.electricity|round(2) }} €</h3>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-muted">Costo Totale Diesel Equivalente</h6>
+                    <h3 class="text-warning">{{ charts.savings.cumulative.diesel|round(2) }} €</h3>
+                </div>
+                
+                <div class="alert alert-success">
+                    <h6>Risparmio Totale</h6>
+                    <h3>{{ charts.savings.amount }} € ({{ charts.savings.percentage }}%)</h3>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <p>Nessun dato disponibile per il calcolo dei costi.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

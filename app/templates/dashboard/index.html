@@ -22,7 +22,10 @@
             <div class="card-body d-flex flex-column align-items-center justify-content-between">
                 <div class="text-center mb-3">
                     <i class="bi bi-lightning-charge-fill text-primary" style="font-size: 3rem;"></i>
-                    <p class="mt-3">Visualizza i dati relativi al consumo energetico della pompa di calore.</p>
+                    {% if total_energy_consumed is defined %}
+                    <h3 class="mt-3 mb-2">{{ total_energy_consumed }} kWh</h3>
+                    {% endif %}
+                    <p class="mt-2">Visualizza i dati relativi al consumo energetico della pompa di calore.</p>
                 </div>
                 <a href="{{ url_for('consumption.index', time_range=request.args.get('time_range', '7d'), aggregation=request.args.get('aggregation', 'auto'), energy_type=request.args.get('energy_type', 'total'), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', '')) }}" class="btn btn-primary">
                     <i class="bi bi-graph-up me-1"></i> Visualizza Consumo
@@ -40,7 +43,13 @@
             <div class="card-body d-flex flex-column align-items-center justify-content-between">
                 <div class="text-center mb-3">
                     <i class="bi bi-currency-euro text-success" style="font-size: 3rem;"></i>
-                    <p class="mt-3">Confronta i costi operativi della pompa di calore con un sistema a diesel equivalente.</p>
+                    {% if total_cost is defined and diesel_cost is defined %}
+                    <h3 class="mt-3 mb-2">{{ total_cost }} €</h3>
+                    {% if savings is defined and savings_percentage is defined %}
+                    <p class="badge bg-success mb-2">Risparmio: {{ savings }} € ({{ savings_percentage }}%)</p>
+                    {% endif %}
+                    {% endif %}
+                    <p class="mt-2">Confronta i costi operativi della pompa di calore con un sistema a diesel equivalente.</p>
                 </div>
                 <a href="{{ url_for('costs.index', time_range=request.args.get('time_range', '7d'), aggregation=request.args.get('aggregation', 'auto'), energy_type=request.args.get('energy_type', 'total'), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', '')) }}" class="btn btn-success">
                     <i class="bi bi-cash-coin me-1"></i> Visualizza Costi
@@ -58,7 +67,11 @@
             <div class="card-body d-flex flex-column align-items-center justify-content-between">
                 <div class="text-center mb-3">
                     <i class="bi bi-thermometer-half text-danger" style="font-size: 3rem;"></i>
-                    <p class="mt-3">Analizza l'andamento delle temperature esterne e l'efficienza della pompa di calore (COP).</p>
+                    {% if avg_temperature is defined %}
+                    <h3 class="mt-3 mb-2">{{ avg_temperature }}°C</h3>
+                    <p class="badge bg-info mb-2">Temperatura Media</p>
+                    {% endif %}
+                    <p class="mt-2">Analizza l'andamento delle temperature esterne e l'efficienza della pompa di calore (COP).</p>
                 </div>
                 <a href="{{ url_for('temperature.index', time_range=request.args.get('time_range', '7d'), aggregation=request.args.get('aggregation', 'auto'), energy_type=request.args.get('energy_type', 'total'), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', '')) }}" class="btn btn-danger">
                     <i class="bi bi-thermometer-half me-1"></i> Visualizza Temperature

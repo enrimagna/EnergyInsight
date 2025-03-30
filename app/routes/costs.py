@@ -179,7 +179,7 @@ def index():
         else:
             period = "Selected Period"
         
-        # Cost comparison chart
+        # Cost comparison chart (non-cumulative)
         cost_chart = {
             'type': 'line',
             'data': {
@@ -187,17 +187,21 @@ def index():
                 'datasets': [
                     {
                         'label': 'Heat Pump Cost (€)',
-                        'data': cum_electricity,
+                        'data': electricity_costs,
                         'borderColor': 'rgb(54, 162, 235)',
                         'backgroundColor': 'rgba(54, 162, 235, 0.2)',
-                        'tension': 0.1
+                        'tension': 0.1,
+                        'pointRadius': 3,
+                        'pointHoverRadius': 5
                     },
                     {
                         'label': 'Diesel Cost (€)',
-                        'data': cum_diesel,
+                        'data': diesel_costs,
                         'borderColor': 'rgb(255, 159, 64)',
                         'backgroundColor': 'rgba(255, 159, 64, 0.2)',
-                        'tension': 0.1
+                        'tension': 0.1,
+                        'pointRadius': 3,
+                        'pointHoverRadius': 5
                     }
                 ]
             },
@@ -238,7 +242,11 @@ def index():
             'electricity': round(total_electricity_cost, 2),
             'diesel': round(total_diesel_cost, 2),
             'amount': round(savings, 2),
-            'percentage': round(savings_percentage, 2)
+            'percentage': round(savings_percentage, 2),
+            'cumulative': {
+                'electricity': cum_electricity[-1] if cum_electricity else 0,
+                'diesel': cum_diesel[-1] if cum_diesel else 0
+            }
         }
     else:
         logger.warning("No energy data available to create cost chart")
