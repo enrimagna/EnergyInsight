@@ -28,8 +28,9 @@ def prices():
     if request.method == 'POST':
         logger.info(f"Form data keys: {list(request.form.keys())}")
         
-        # Handle price updates for a specific month and year
-        if 'update_monthly_price' in request.form:
+        # Handle editing a specific price row
+        if 'update_price_row' in request.form:
+            price_id = request.form.get('price_id', '')
             year = request.form.get('price_year', '')
             month = request.form.get('price_month', '')
             electricity_price = request.form.get('electricity_price', '')
@@ -37,16 +38,17 @@ def prices():
             diesel_efficiency = request.form.get('diesel_efficiency', '')
             
             # Log the received values for debugging
-            logger.info(f"Received monthly price update request - Year: {year}, Month: {month}, "
+            logger.info(f"Received price row update request - ID: {price_id}, Year: {year}, Month: {month}, "
                         f"Electricity: {electricity_price}, Diesel: {diesel_price}, Efficiency: {diesel_efficiency}")
             
             # Validate inputs
             errors = False
-            if not year or not month or not electricity_price or not diesel_price or not diesel_efficiency:
+            if not price_id or not year or not month or not electricity_price or not diesel_price or not diesel_efficiency:
                 flash('All fields are required', 'danger')
                 errors = True
             else:
                 try:
+                    price_id = int(price_id)
                     year = int(year)
                     month = int(month)
                     electricity_price = float(electricity_price)
@@ -54,7 +56,7 @@ def prices():
                     diesel_efficiency = float(diesel_efficiency)
                     
                     # Log the converted values
-                    logger.info(f"Converted values - Year: {year}, Month: {month}, "
+                    logger.info(f"Converted values - ID: {price_id}, Year: {year}, Month: {month}, "
                                 f"Electricity: {electricity_price}, Diesel: {diesel_price}, Efficiency: {diesel_efficiency}")
                     
                     if year < 2000 or year > 2100 or month < 1 or month > 12 or \
@@ -95,10 +97,10 @@ def prices():
                     db.recalculate_energy_costs(start_date, end_date)
                     db.close_connection()
                     
-                    flash(f'Prices for {month}/{year} updated successfully', 'success')
+                    flash(f'Prezzi per {month}/{year} aggiornati con successo', 'success')
                 except Exception as e:
-                    logger.error(f"Error updating monthly prices: {str(e)}")
-                    flash(f'Error updating monthly prices: {str(e)}', 'danger')
+                    logger.error(f"Error updating price row: {str(e)}")
+                    flash(f'Errore durante l\'aggiornamento dei prezzi: {str(e)}', 'danger')
         
         # Legacy price update (for current month)
         elif 'update_prices' in request.form:
@@ -154,10 +156,10 @@ def prices():
                     db.recalculate_energy_costs()
                     db.close_connection()
                     
-                    flash('Prices updated successfully', 'success')
+                    flash('Prezzi aggiornati con successo', 'success')
                 except Exception as e:
                     logger.error(f"Error updating prices: {str(e)}")
-                    flash(f'Error updating prices: {str(e)}', 'danger')
+                    flash(f'Errore durante l\'aggiornamento dei prezzi: {str(e)}', 'danger')
     
     # Prepare data for the template
     current_date = datetime.datetime.now()
@@ -171,12 +173,11 @@ def prices():
     formatted_price_history = []
     if price_history:
         for price in price_history:
-            month_name = datetime.date(price['year'], price['month'], 1).strftime('%B')
             formatted_price_history.append({
                 'id': price['id'],
                 'year': price['year'],
                 'month': price['month'],
-                'month_name': month_name,
+                'month_name': datetime.date(price['year'], price['month'], 1).strftime('%B'),
                 'electricity_price': price['electricity_price'],
                 'diesel_price': price['diesel_price'],
                 'diesel_efficiency': price['diesel_efficiency']

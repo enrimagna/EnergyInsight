@@ -10,86 +10,7 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">Impostazioni Prezzi Attuali</h5>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="electricity_price" class="form-label">Prezzo Elettricità (€/kWh):</label>
-                        <input type="number" step="0.0001" min="0" class="form-control" id="electricity_price" 
-                            name="electricity_price" value="{{ settings.electricity_price }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="diesel_price" class="form-label">Prezzo Diesel (€/L):</label>
-                        <input type="number" step="0.0001" min="0" class="form-control" id="diesel_price" 
-                            name="diesel_price" value="{{ settings.diesel_price }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="diesel_efficiency" class="form-label">Efficienza Diesel (0-1):</label>
-                        <input type="number" step="0.0001" min="0" max="1" class="form-control" id="diesel_efficiency" 
-                            name="diesel_efficiency" value="{{ settings.diesel_efficiency }}" required>
-                    </div>
-                    <button type="submit" name="update_prices" class="btn btn-primary w-100">
-                        <i class="bi bi-save"></i> Salva Impostazioni Prezzi Attuali
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Monthly Price Management -->
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">Gestione Prezzi Mensili</h5>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="price_year" class="form-label">Anno:</label>
-                            <select class="form-select" id="price_year" name="price_year" required>
-                                {% for year in range(settings.current_year - 5, settings.current_year + 2) %}
-                                <option value="{{ year }}" {% if year == settings.current_year %}selected{% endif %}>{{ year }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="price_month" class="form-label">Mese:</label>
-                            <select class="form-select" id="price_month" name="price_month" required>
-                                {% for month in range(1, 13) %}
-                                <option value="{{ month }}" {% if month == settings.current_month %}selected{% endif %}>
-                                    {{ month }} - {{ ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'][month-1] }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="electricity_price" class="form-label">Prezzo Elettricità (€/kWh):</label>
-                        <input type="number" step="0.0001" min="0" class="form-control" id="electricity_price" 
-                            name="electricity_price" value="{{ settings.electricity_price }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="diesel_price" class="form-label">Prezzo Diesel (€/L):</label>
-                        <input type="number" step="0.0001" min="0" class="form-control" id="diesel_price" 
-                            name="diesel_price" value="{{ settings.diesel_price }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="diesel_efficiency" class="form-label">Efficienza Diesel (0-1):</label>
-                        <input type="number" step="0.0001" min="0" max="1" class="form-control" id="diesel_efficiency" 
-                            name="diesel_efficiency" value="{{ settings.diesel_efficiency }}" required>
-                    </div>
-                    <button type="submit" name="update_monthly_price" class="btn btn-primary w-100">
-                        <i class="bi bi-save"></i> Salva Prezzo Mensile
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6">
+    <div class="col-12">
         <!-- Price History Table -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
@@ -97,6 +18,18 @@
             </div>
             <div class="card-body">
                 {% if price_history and price_history|length > 0 %}
+                <div class="mb-3 d-flex align-items-center">
+                    <button class="btn btn-outline-secondary me-2" id="prev-year">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <div class="flex-grow-1 text-center">
+                        <h5 class="mb-0" id="year-display">{{ settings.current_year }}</h5>
+                        <input type="hidden" id="current-year" value="{{ settings.current_year }}">
+                    </div>
+                    <button class="btn btn-outline-secondary ms-2" id="next-year">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered">
                         <thead class="table-dark">
@@ -105,15 +38,24 @@
                                 <th>Elettricità (€/kWh)</th>
                                 <th>Diesel (€/L)</th>
                                 <th>Efficienza</th>
+                                <th>Azioni</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for price in price_history %}
-                            <tr>
-                                <td>{{ price.month_name }} {{ price.year }}</td>
-                                <td>{{ price.electricity_price|round(4) }}</td>
-                                <td>{{ price.diesel_price|round(4) }}</td>
-                                <td>{{ (price.diesel_efficiency * 100)|round(1) }}%</td>
+                            <tr class="price-row" data-year="{{ price.year }}">
+                                <td>{{ ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'][price.month-1] }}</td>
+                                <td id="elec-{{ price.id }}">{{ price.electricity_price|round(4) }}</td>
+                                <td id="diesel-{{ price.id }}">{{ price.diesel_price|round(4) }}</td>
+                                <td id="eff-{{ price.id }}">{{ (price.diesel_efficiency * 100)|round(1) }}%</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary edit-price-btn" data-id="{{ price.id }}" 
+                                            data-year="{{ price.year }}" data-month="{{ price.month }}"
+                                            data-elec="{{ price.electricity_price }}" data-diesel="{{ price.diesel_price }}"
+                                            data-eff="{{ price.diesel_efficiency }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -128,4 +70,135 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Price Modal -->
+<div class="modal fade" id="editPriceModal" tabindex="-1" aria-labelledby="editPriceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editPriceModalLabel">Modifica Prezzo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_price_id" name="price_id">
+                    <input type="hidden" id="edit_price_year" name="price_year">
+                    <input type="hidden" id="edit_price_month" name="price_month">
+                    
+                    <div class="mb-3">
+                        <label for="edit_electricity_price" class="form-label">Prezzo Elettricità (€/kWh):</label>
+                        <input type="number" step="0.0001" min="0" class="form-control" id="edit_electricity_price" 
+                            name="electricity_price" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_diesel_price" class="form-label">Prezzo Diesel (€/L):</label>
+                        <input type="number" step="0.0001" min="0" class="form-control" id="edit_diesel_price" 
+                            name="diesel_price" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_diesel_efficiency" class="form-label">Efficienza Diesel (0-1):</label>
+                        <input type="number" step="0.0001" min="0" max="1" class="form-control" id="edit_diesel_efficiency" 
+                            name="diesel_efficiency" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" name="update_price_row" class="btn btn-primary">Salva Modifiche</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize edit price buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up edit buttons
+        const editButtons = document.querySelectorAll('.edit-price-btn');
+        editButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const year = this.getAttribute('data-year');
+                const month = this.getAttribute('data-month');
+                const elec = this.getAttribute('data-elec');
+                const diesel = this.getAttribute('data-diesel');
+                const eff = this.getAttribute('data-eff');
+                
+                document.getElementById('edit_price_id').value = id;
+                document.getElementById('edit_price_year').value = year;
+                document.getElementById('edit_price_month').value = month;
+                document.getElementById('edit_electricity_price').value = elec;
+                document.getElementById('edit_diesel_price').value = diesel;
+                document.getElementById('edit_diesel_efficiency').value = eff;
+                
+                const modal = new bootstrap.Modal(document.getElementById('editPriceModal'));
+                modal.show();
+            });
+        });
+        
+        // Filter by current year on page load
+        filterPricesByYear(document.getElementById('current-year').value);
+        
+        // Set up year navigation
+        document.getElementById('prev-year').addEventListener('click', function() {
+            navigateYear(-1);
+        });
+        
+        document.getElementById('next-year').addEventListener('click', function() {
+            navigateYear(1);
+        });
+    });
+    
+    // Filter prices by year
+    function filterPricesByYear(year) {
+        const rows = document.querySelectorAll('.price-row');
+        let hasVisibleRows = false;
+        
+        rows.forEach(row => {
+            const rowYear = row.getAttribute('data-year');
+            if (rowYear === year) {
+                row.style.display = '';
+                hasVisibleRows = true;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update year display
+        document.getElementById('year-display').textContent = year;
+        
+        // Show message if no data for selected year
+        const tableElement = document.querySelector('.table-responsive');
+        const noDataMessage = document.querySelector('.alert-info') || 
+                             document.createElement('div');
+        
+        if (!hasVisibleRows) {
+            if (!document.querySelector('.alert-info')) {
+                noDataMessage.className = 'alert alert-info mt-3';
+                noDataMessage.textContent = 'Nessun dato disponibile per l\'anno ' + year;
+                tableElement.style.display = 'none';
+                tableElement.parentNode.appendChild(noDataMessage);
+            } else {
+                tableElement.style.display = 'none';
+                noDataMessage.style.display = '';
+            }
+        } else {
+            tableElement.style.display = '';
+            if (document.querySelector('.alert-info')) {
+                noDataMessage.style.display = 'none';
+            }
+        }
+    }
+    
+    // Navigate between years
+    function navigateYear(direction) {
+        const yearDisplay = document.getElementById('year-display');
+        const currentYear = parseInt(yearDisplay.textContent);
+        const newYear = currentYear + direction;
+        
+        // Update the display and filter
+        yearDisplay.textContent = newYear;
+        filterPricesByYear(newYear.toString());
+    }
+</script>
 {% endblock %}

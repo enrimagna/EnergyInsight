@@ -410,7 +410,6 @@ def index():
     if temp_data:
         # Prepare data for chart
         timestamps = []
-        indoor_temps = []
         outdoor_temps = []
         
         for row in temp_data:
@@ -420,22 +419,14 @@ def index():
             else:
                 timestamps.append(row[0].strftime('%Y-%m-%d'))
             
-            # Temperature values
-            indoor_temps.append(float(row[1]))
-            outdoor_temps.append(float(row[2]))
+            # Temperature values - only outdoor temperature is available now
+            outdoor_temps.append(float(row[1] or 0))
         
         temp_chart = {
             'type': 'line',
             'data': {
                 'labels': timestamps,
                 'datasets': [
-                    {
-                        'label': 'Indoor Temperature (°C)',
-                        'data': indoor_temps,
-                        'borderColor': 'rgb(255, 99, 132)',
-                        'backgroundColor': 'rgba(255, 99, 132, 0.2)',
-                        'tension': 0.1
-                    },
                     {
                         'label': 'Outdoor Temperature (°C)',
                         'data': outdoor_temps,
@@ -458,7 +449,7 @@ def index():
                 'plugins': {
                     'title': {
                         'display': True,
-                        'text': 'Temperature Trends'
+                        'text': 'Outdoor Temperature Trends'
                     }
                 }
             }

@@ -27,17 +27,20 @@ def index():
     
     # Temperature graph
     if temp_data:
-        timestamps = [row[0] for row in temp_data]
-        indoor_temps = [row[1] for row in temp_data]
-        outdoor_temps = [row[2] for row in temp_data]
+        timestamps = []
+        outdoor_temps = []
+        
+        for row in temp_data:
+            # Format date
+            if isinstance(row[0], str):
+                timestamps.append(row[0])
+            else:
+                timestamps.append(row[0].strftime('%Y-%m-%d'))
+            
+            # Temperature values - only outdoor temperature is available
+            outdoor_temps.append(float(row[1] or 0))
         
         temp_fig = go.Figure()
-        temp_fig.add_trace(go.Scatter(
-            x=timestamps, 
-            y=indoor_temps,
-            mode='lines',
-            name='Indoor Temperature (°C)'
-        ))
         temp_fig.add_trace(go.Scatter(
             x=timestamps, 
             y=outdoor_temps,
