@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Analisi Costi - Energy Insight{% endblock %}
+
+{% block page_title %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Analisi Costi</h1>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Cost Comparison Chart -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Confronto Costi: Pompa di Calore vs Diesel</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center">
+                <div class="chart-container" style="position: relative; height:400px; width: 90%;">
+                    <canvas id="cost-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cost Analysis Information -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Informazioni sull'Analisi dei Costi</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    Questa pagina mostra un confronto tra i costi operativi della pompa di calore e un sistema di riscaldamento a diesel equivalente.
+                </p>
+                <p>
+                    <strong>Pompa di Calore:</strong> I costi sono calcolati in base al consumo effettivo di energia elettrica e alle tariffe correnti.
+                </p>
+                <p>
+                    <strong>Diesel:</strong> I costi sono stimati in base all'energia prodotta dalla pompa di calore, convertita in equivalente diesel considerando un'efficienza media delle caldaie a diesel (85%) e il potere calorifico del diesel (10.5 kWh/litro).
+                </p>
+                <p>
+                    <strong>Formula:</strong> Costo Diesel = (Energia Prodotta / (Efficienza Diesel * 10.5)) * Prezzo Diesel
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Parse chart data from server
+    /* eslint-disable */
+    var chartData = {{ charts|tojson|safe }};
+    /* eslint-enable */
+    
+    console.log("Dati del grafico ricevuti:", chartData);
+    
+    // Render cost chart
+    if (chartData.cost_chart) {
+        try {
+            var costChartConfig = JSON.parse(chartData.cost_chart);
+            console.log("Dati del grafico dei costi parsati con successo");
+            var costCtx = document.getElementById('cost-chart').getContext('2d');
+            var costChart = new Chart(costCtx, costChartConfig);
+        } catch (e) {
+            console.error("Errore durante il parsing dei dati del grafico dei costi:", e);
+            document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico dei costi: ' + e.message + '</div>';
+        }
+    } else {
+        console.warn("Nessun dato disponibile per il grafico dei costi");
+        document.getElementById('cost-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico dei costi</div>';
+    }
+})();
+</script>
+{% endblock %}

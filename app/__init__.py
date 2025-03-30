@@ -67,10 +67,13 @@ def create_app(test_config=None):
         logger.info("Continuing without scheduler - you'll need to trigger data updates manually")
     
     # Register blueprints
-    from app.routes import dashboard, settings, data
+    from app.routes import dashboard, settings, data, temperature, consumption, costs
     app.register_blueprint(dashboard.bp, url_prefix='/dashboard')
     app.register_blueprint(settings.bp, url_prefix='/settings')
     app.register_blueprint(data.bp, url_prefix='/data')
+    app.register_blueprint(temperature.bp, url_prefix='/temperature')
+    app.register_blueprint(consumption.bp, url_prefix='/consumption')
+    app.register_blueprint(costs.bp, url_prefix='/costs')
     
     # Root route redirects to dashboard
     @app.route('/')

@@ -374,17 +374,22 @@
         </div>
         <ul class="sidebar-nav">
             <li>
-                <a href="{{ url_for('dashboard.index') }}?view=energy" class="{% if request.args.get('view') == 'energy' %}active{% endif %}" title="Consumo">
+                <a href="{{ url_for('dashboard.index') }}" class="{% if request.endpoint == 'dashboard.index' %}active{% endif %}" title="Dashboard">
+                    <i class="bi bi-speedometer2"></i> <span class="sidebar-text">Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('consumption.index') }}" class="{% if request.endpoint == 'consumption.index' %}active{% endif %}" title="Consumo">
                     <i class="bi bi-plug"></i> <span class="sidebar-text">Consumo</span>
                 </a>
             </li>
             <li>
-                <a href="{{ url_for('dashboard.index') }}?view=cost" class="{% if request.args.get('view') == 'cost' %}active{% endif %}" title="Analisi Costi">
+                <a href="{{ url_for('costs.index') }}" class="{% if request.endpoint == 'costs.index' %}active{% endif %}" title="Analisi Costi">
                     <i class="bi bi-currency-euro"></i> <span class="sidebar-text">Analisi Costi</span>
                 </a>
             </li>
             <li>
-                <a href="{{ url_for('dashboard.index') }}?view=temperature" class="{% if request.args.get('view') == 'temperature' %}active{% endif %}" title="Temperatura">
+                <a href="{{ url_for('temperature.index') }}" class="{% if request.endpoint == 'temperature.index' %}active{% endif %}" title="Temperatura">
                     <i class="bi bi-thermometer-half"></i> <span class="sidebar-text">Temperatura</span>
                 </a>
             </li>
@@ -420,6 +425,85 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+
+        <!-- Page Title -->
+        {% block page_title %}{% endblock %}
+
+        <!-- Common Filter Bar (only for non-settings pages) -->
+        {% if not request.endpoint or not request.endpoint.startswith('settings.') %}
+        <div class="common-filter-bar mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <form id="common-filter-form" method="get" action="{{ request.path }}" class="d-flex align-items-center justify-content-between">
+                        <input type="hidden" id="is-auto-aggregation" name="is_auto_aggregation" value="{{ request.args.get('is_auto_aggregation', 'true') }}">
+                        
+                        <div class="d-flex align-items-center">
+                            <!-- Time Range Selector -->
+                            <div class="me-3">
+                                <select class="form-select form-select-sm" id="time-range" name="time_range" style="min-width: 120px;">
+                                    <option value="7d" {% if request.args.get('time_range') == '7d' %}selected{% endif %}>Ultimi 7 giorni</option>
+                                    <option value="30d" {% if request.args.get('time_range') == '30d' %}selected{% endif %}>Ultimi 30 giorni</option>
+                                    <option value="90d" {% if request.args.get('time_range') == '90d' %}selected{% endif %}>Ultimi 90 giorni</option>
+                                    <option value="ytd" {% if request.args.get('time_range') == 'ytd' %}selected{% endif %}>Anno in corso</option>
+                                    <option value="1y" {% if request.args.get('time_range') == '1y' %}selected{% endif %}>Ultimo anno</option>
+                                    <option value="2y" {% if request.args.get('time_range') == '2y' %}selected{% endif %}>Ultimi 2 anni</option>
+                                    <option value="5y" {% if request.args.get('time_range') == '5y' %}selected{% endif %}>Ultimi 5 anni</option>
+                                    <option value="custom" {% if request.args.get('time_range') == 'custom' %}selected{% endif %}>Personalizzato</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Aggregation Selector -->
+                            <div class="me-3">
+                                <select class="form-select form-select-sm" id="aggregation" name="aggregation" style="min-width: 120px;" data-was-auto="{{ 'true' if request.args.get('aggregation') == 'auto' else 'false' }}">
+                                    <option value="auto" {% if request.args.get('aggregation') == 'auto' %}selected{% endif %}>Auto</option>
+                                    <option value="day" {% if request.args.get('aggregation') == 'day' %}selected{% endif %}>Giornaliero</option>
+                                    <option value="week" {% if request.args.get('aggregation') == 'week' %}selected{% endif %}>Settimanale</option>
+                                    <option value="month" {% if request.args.get('aggregation') == 'month' %}selected{% endif %}>Mensile</option>
+                                    <option value="quarter" {% if request.args.get('aggregation') == 'quarter' %}selected{% endif %}>Trimestrale</option>
+                                    <option value="year" {% if request.args.get('aggregation') == 'year' %}selected{% endif %}>Annuale</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Custom Date Range Inputs (initially hidden) -->
+                            <div class="custom-date-range ms-3" {% if request.args.get('time_range') != 'custom' %}style="display: none;"{% endif %}>
+                                <div class="d-flex">
+                                    <div class="input-group input-group-sm me-2" style="width: 150px;">
+                                        <input type="date" class="form-control" id="start-date" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                                    </div>
+                                    <div class="input-group input-group-sm me-2" style="width: 150px;">
+                                        <input type="date" class="form-control" id="end-date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Energy Type Selector -->
+                        <div>
+                            <div class="btn-group" role="group" aria-label="Energy Type">
+                                <input type="radio" class="btn-check" name="energy_type" id="energy-type-total" value="total" {% if request.args.get('energy_type', 'total') == 'total' %}checked{% endif %} autocomplete="off">
+                                <label class="btn btn-outline-primary btn-sm" for="energy-type-total" title="Totale">
+                                    <i class="bi bi-lightning-charge"></i>
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="energy_type" id="energy-type-heating" value="heating" {% if request.args.get('energy_type') == 'heating' %}checked{% endif %} autocomplete="off">
+                                <label class="btn btn-outline-primary btn-sm" for="energy-type-heating" title="Riscaldamento">
+                                    <i class="bi bi-thermometer-half"></i>
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="energy_type" id="energy-type-hot-water" value="hot_water" {% if request.args.get('energy_type') == 'hot_water' %}checked{% endif %} autocomplete="off">
+                                <label class="btn btn-outline-primary btn-sm" for="energy-type-hot-water" title="Acqua Calda">
+                                    <i class="bi bi-water"></i>
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         {% block content %}{% endblock %}
     </div>
@@ -458,6 +542,74 @@
             var forms = document.querySelectorAll('form, input, select, textarea');
             for (var i = 0; i < forms.length; i++) {
                 forms[i].setAttribute('data-bs-no-autofill', 'true');
+            }
+        });
+    </script>
+    
+    <!-- Common Filter Form JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var commonFilterForm = document.getElementById('common-filter-form');
+            
+            if (commonFilterForm) {
+                // Handle time range changes
+                var timeRangeSelect = document.getElementById('time-range');
+                if (timeRangeSelect) {
+                    timeRangeSelect.addEventListener('change', function() {
+                        var selectedValue = this.value;
+                        var customDateRange = document.querySelector('.custom-date-range');
+                        var aggregationSelect = document.getElementById('aggregation');
+                        var isAutoAggregation = document.getElementById('is-auto-aggregation');
+                        
+                        if (selectedValue === 'custom') {
+                            customDateRange.style.display = 'block';
+                        } else {
+                            customDateRange.style.display = 'none';
+                            
+                            // If aggregation was auto before, keep it auto
+                            if (aggregationSelect.getAttribute('data-was-auto') === 'true') {
+                                aggregationSelect.value = 'auto';
+                                isAutoAggregation.value = 'true';
+                            }
+                            
+                            // Submit the form
+                            commonFilterForm.submit();
+                        }
+                    });
+                }
+                
+                // Handle aggregation changes
+                var aggregationSelect = document.getElementById('aggregation');
+                if (aggregationSelect) {
+                    // Initialize the data-was-auto attribute on page load
+                    if (aggregationSelect.value === 'auto') {
+                        aggregationSelect.setAttribute('data-was-auto', 'true');
+                    } else {
+                        aggregationSelect.setAttribute('data-was-auto', 'false');
+                    }
+                    
+                    aggregationSelect.addEventListener('change', function() {
+                        // Update the data-was-auto attribute
+                        if (this.value === 'auto') {
+                            this.setAttribute('data-was-auto', 'true');
+                            document.getElementById('is-auto-aggregation').value = 'true';
+                        } else {
+                            this.setAttribute('data-was-auto', 'false');
+                            document.getElementById('is-auto-aggregation').value = 'false';
+                        }
+                        
+                        // Submit the form
+                        commonFilterForm.submit();
+                    });
+                }
+                
+                // Handle energy type changes
+                var energyTypeInputs = document.querySelectorAll('input[name="energy_type"]');
+                energyTypeInputs.forEach(function(input) {
+                    input.addEventListener('change', function() {
+                        commonFilterForm.submit();
+                    });
+                });
             }
         });
     </script>

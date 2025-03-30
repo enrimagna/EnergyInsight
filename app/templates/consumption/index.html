@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Consumo Energetico - Energy Insight{% endblock %}
+
+{% block page_title %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Consumo Energetico</h1>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Energy Consumption Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Energia</h5>
+            </div>
+            <div class="card-body d-flex justify-content-center">
+                <div class="chart-container" style="position: relative; height:400px; width: 90%;">
+                    <canvas id="energy-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Parse chart data from server
+    /* eslint-disable */
+    var chartData = {{ charts|tojson|safe }};
+    /* eslint-enable */
+    
+    console.log("Dati del grafico ricevuti:", chartData);
+    
+    // Render energy chart
+    if (chartData.energy_chart) {
+        try {
+            var energyChartConfig = JSON.parse(chartData.energy_chart);
+            console.log("Dati del grafico energetico parsati con successo");
+            var energyCtx = document.getElementById('energy-chart').getContext('2d');
+            var energyChart = new Chart(energyCtx, energyChartConfig);
+        } catch (e) {
+            console.error("Errore durante il parsing dei dati del grafico energetico:", e);
+            document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico energetico: ' + e.message + '</div>';
+        }
+    } else {
+        console.warn("Nessun dato disponibile per il grafico energetico");
+        document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico energetico</div>';
+    }
+})();
+</script>
+{% endblock %}

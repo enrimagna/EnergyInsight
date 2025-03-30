@@ -1,62 +1,77 @@
 {% extends "base.html" %}
 
-{% block title %}Dati Temperatura - Energy Insight{% endblock %}
+{% block title %}Temperature e COP - Energy Insight{% endblock %}
 
-{% block content %}
+{% block page_title %}
 <div class="row">
     <div class="col-12">
-        <h1 class="mb-4">Dati Temperatura</h1>
+        <h1 class="mb-4">Temperature e COP</h1>
     </div>
 </div>
+{% endblock %}
 
+{% block content %}
+<!-- Combined Temperature and COP Chart -->
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Intervallo di Tempo</h5>
+                <h5 class="card-title mb-0">Temperatura e Coefficiente di Prestazione (COP)</h5>
             </div>
-            <div class="card-body">
-                <div class="btn-group" role="group" aria-label="Intervallo di tempo">
-                    <button type="button" class="btn btn-outline-primary time-range" data-days="1">Ultime 24h</button>
-                    <button type="button" class="btn btn-outline-primary time-range active" data-days="7">Ultima Settimana</button>
-                    <button type="button" class="btn btn-outline-primary time-range" data-days="30">Ultimo Mese</button>
-                    <button type="button" class="btn btn-outline-primary time-range" data-days="90">Ultimi 3 Mesi</button>
+            <div class="card-body d-flex justify-content-center">
+                <div class="chart-container" style="position: relative; height:450px; width: 95%;">
+                    {% if 'combined_chart' in charts %}
+                        <canvas id="combined-chart"></canvas>
+                    {% elif 'temp_chart' in charts and 'cop_chart' in charts %}
+                        <!-- Fallback to tabs if combined chart is not available -->
+                        <ul class="nav nav-tabs" id="chart-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="temperature-tab" data-bs-toggle="tab" data-bs-target="#temperature-panel" type="button" role="tab" aria-controls="temperature-panel" aria-selected="true">Temperature</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="cop-tab" data-bs-toggle="tab" data-bs-target="#cop-panel" type="button" role="tab" aria-controls="cop-panel" aria-selected="false">COP</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3" id="chart-tabs-content">
+                            <div class="tab-pane fade show active" id="temperature-panel" role="tabpanel" aria-labelledby="temperature-tab">
+                                <canvas id="temp-chart"></canvas>
+                            </div>
+                            <div class="tab-pane fade" id="cop-panel" role="tabpanel" aria-labelledby="cop-tab">
+                                <canvas id="cop-chart"></canvas>
+                            </div>
+                        </div>
+                    {% elif 'temp_chart' in charts %}
+                        <canvas id="temp-chart"></canvas>
+                    {% elif 'cop_chart' in charts %}
+                        <canvas id="cop-chart"></canvas>
+                    {% else %}
+                        <div class="alert alert-warning">Nessun dato disponibile per i grafici</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Chart Legend and Explanation -->
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Andamento Temperature Esterne</h5>
+                <h5 class="card-title mb-0">Informazioni sul Grafico</h5>
             </div>
             <div class="card-body">
-                <div id="temp-graph" class="graph-container"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Analisi Temperature</h5>
-            </div>
-            <div class="card-body">
-                <p>
-                    Questa pagina mostra l'andamento delle temperature esterne. 
-                    I dati di temperatura sono importanti per comprendere l'efficienza del riscaldamento. 
-                    Temperature esterne più basse tipicamente richiedono più energia per il riscaldamento.
-                </p>
-                <p>
-                    L'efficienza della pompa di calore (COP) è influenzata dalle temperature esterne.
-                    Temperature esterne più basse possono ridurre l'efficienza della pompa di calore,
-                    aumentando il consumo di energia elettrica.
-                </p>
+                <p>Il grafico mostra la relazione tra la temperatura esterna (asse sinistro) e l'efficienza della pompa di calore (COP - asse destro).</p>
+                <div class="d-flex align-items-center mb-2">
+                    <div style="width: 20px; height: 20px; background-color: rgb(54, 162, 235); margin-right: 10px;"></div>
+                    <span>Temperatura Esterna (°C) - asse sinistro</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div style="width: 20px; height: 20px; background-color: rgb(255, 99, 132); margin-right: 10px;"></div>
+                    <span>COP (Coefficiente di Prestazione) - asse destro</span>
+                </div>
+                <hr>
+                <p><strong>Nota:</strong> Il COP (Coefficiente di Prestazione) indica l'efficienza della pompa di calore. Un valore più alto indica una maggiore efficienza energetica.</p>
             </div>
         </div>
     </div>
@@ -66,31 +81,63 @@
 {% block scripts %}
 <script>
 (function() {
-    // Parse graph data from server
-    var graphData = JSON.parse('{{ graphs|tojson|safe }}');
+    // Parse chart data from server
+    /* eslint-disable */
+    var chartData = {{ charts|tojson|safe }};
+    /* eslint-enable */
     
-    // Render initial graph
-    if (graphData.temp_graph) {
-        Plotly.newPlot('temp-graph', JSON.parse(graphData.temp_graph));
+    console.log("Dati del grafico ricevuti:", chartData);
+    
+    // Render combined chart if available
+    if (chartData.combined_chart) {
+        try {
+            var combinedChartConfig = JSON.parse(chartData.combined_chart);
+            console.log("Dati del grafico combinato parsati con successo");
+            var combinedCtx = document.getElementById('combined-chart').getContext('2d');
+            var combinedChart = new Chart(combinedCtx, combinedChartConfig);
+        } catch (e) {
+            console.error("Errore durante il parsing dei dati del grafico combinato:", e);
+            document.getElementById('combined-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico combinato: ' + e.message + '</div>';
+        }
+    } 
+    // Render individual charts if combined chart is not available
+    else {
+        // Render temperature chart
+        if (chartData.temp_chart) {
+            try {
+                var tempChartConfig = JSON.parse(chartData.temp_chart);
+                console.log("Dati del grafico delle temperature parsati con successo");
+                var tempCtx = document.getElementById('temp-chart').getContext('2d');
+                var tempChart = new Chart(tempCtx, tempChartConfig);
+            } catch (e) {
+                console.error("Errore durante il parsing dei dati del grafico delle temperature:", e);
+                document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico delle temperature: ' + e.message + '</div>';
+            }
+        } else {
+            console.warn("Nessun dato disponibile per il grafico delle temperature");
+            if (document.getElementById('temp-chart')) {
+                document.getElementById('temp-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico delle temperature</div>';
+            }
+        }
+        
+        // Render COP chart
+        if (chartData.cop_chart) {
+            try {
+                var copChartConfig = JSON.parse(chartData.cop_chart);
+                console.log("Dati del grafico COP parsati con successo");
+                var copCtx = document.getElementById('cop-chart').getContext('2d');
+                var copChart = new Chart(copCtx, copChartConfig);
+            } catch (e) {
+                console.error("Errore durante il parsing dei dati del grafico COP:", e);
+                document.getElementById('cop-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico COP: ' + e.message + '</div>';
+            }
+        } else {
+            console.warn("Nessun dato disponibile per il grafico COP");
+            if (document.getElementById('cop-chart')) {
+                document.getElementById('cop-chart').parentNode.innerHTML = '<div class="alert alert-warning">Nessun dato disponibile per il grafico COP</div>';
+            }
+        }
     }
-    
-    // Handle time range buttons
-    var timeRangeButtons = document.querySelectorAll('.time-range');
-    Array.prototype.forEach.call(timeRangeButtons, function(button) {
-        button.addEventListener('click', function() {
-            // Update active button
-            Array.prototype.forEach.call(timeRangeButtons, function(b) {
-                b.classList.remove('active');
-            });
-            this.classList.add('active');
-            
-            // Get selected days
-            var days = this.getAttribute('data-days');
-            
-            // Reload the page to get updated graphs
-            window.location.href = '{{ url_for("temperature.index") }}?days=' + days;
-        });
-    });
 })();
 </script>
 {% endblock %}
