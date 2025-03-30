@@ -5,68 +5,73 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h1 class="mb-4">Dashboard Energetico</h1>
+        <h1 class="mb-3">Dashboard Energetico</h1>
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">Controlli Dashboard</h5>
-    </div>
-    <div class="card-body">
-        <form id="dashboard-form" method="get" action="{{ url_for('dashboard.index') }}">
-            <div class="row">
-                <!-- Time Range Selector -->
-                <div class="col-md-4 mb-3">
-                    <label for="time-range" class="form-label">Intervallo di Tempo</label>
-                    <select class="form-select" id="time-range" name="time_range">
-                        <option value="ytd" {% if time_range == 'ytd' %}selected{% endif %}>Anno in corso</option>
-                        <option value="7d" {% if time_range == '7d' %}selected{% endif %}>Ultimi 7 giorni</option>
-                        <option value="30d" {% if time_range == '30d' %}selected{% endif %}>Ultimi 30 giorni</option>
-                        <option value="90d" {% if time_range == '90d' %}selected{% endif %}>Ultimi 90 giorni</option>
-                        <option value="1y" {% if time_range == '1y' %}selected{% endif %}>Ultimo anno</option>
-                        <option value="2y" {% if time_range == '2y' %}selected{% endif %}>Ultimi 2 anni</option>
-                        <option value="5y" {% if time_range == '5y' %}selected{% endif %}>Ultimi 5 anni</option>
-                        <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Intervallo personalizzato</option>
-                    </select>
-                </div>
-                
-                <!-- Data Aggregation -->
-                <div class="col-md-4 mb-3">
-                    <label for="aggregation" class="form-label">Aggregazione Dati</label>
-                    <select class="form-select" id="aggregation" name="aggregation">
-                        <option value="auto" {% if not aggregation or aggregation == 'auto' %}selected{% endif %}>Auto</option>
-                        <option value="day" {% if aggregation == 'day' %}selected{% endif %}>Giornaliera</option>
-                        <option value="week" {% if aggregation == 'week' %}selected{% endif %}>Settimanale</option>
-                        <option value="month" {% if aggregation == 'month' %}selected{% endif %}>Mensile</option>
-                        <option value="quarter" {% if aggregation == 'quarter' %}selected{% endif %}>Trimestrale</option>
-                        <option value="year" {% if aggregation == 'year' %}selected{% endif %}>Annuale</option>
-                    </select>
-                </div>
-                
-                <!-- Energy Type -->
-                <div class="col-md-4 mb-3">
-                    <label for="energy-type" class="form-label">Tipo di Energia</label>
-                    <select class="form-select" id="energy-type" name="energy_type">
-                        <option value="total" {% if energy_type == 'total' %}selected{% endif %}>Totale</option>
-                        <option value="heating" {% if energy_type == 'heating' %}selected{% endif %}>Riscaldamento</option>
-                        <option value="hot_water" {% if energy_type == 'hot_water' %}selected{% endif %}>Acqua Calda</option>
-                    </select>
+<div class="row mb-4 align-items-center">
+    <div class="col-12">
+        <form id="dashboard-form" method="get" action="{{ url_for('dashboard.index') }}" class="d-flex align-items-center">
+            <input type="hidden" id="is-auto-aggregation" name="is_auto_aggregation" value="{{ 'true' if aggregation == 'auto' or request.args.get('is_auto_aggregation') == 'true' else 'false' }}">
+            
+            <!-- Time Range Selector -->
+            <div class="me-3">
+                <select class="form-select form-select-sm" id="time-range" name="time_range" style="min-width: 120px;">
+                    <option value="ytd" {% if time_range == 'ytd' %}selected{% endif %}>Anno in corso</option>
+                    <option value="7d" {% if time_range == '7d' %}selected{% endif %}>Ultimi 7 giorni</option>
+                    <option value="30d" {% if time_range == '30d' %}selected{% endif %}>Ultimi 30 giorni</option>
+                    <option value="90d" {% if time_range == '90d' %}selected{% endif %}>Ultimi 90 giorni</option>
+                    <option value="1y" {% if time_range == '1y' %}selected{% endif %}>Ultimo anno</option>
+                    <option value="2y" {% if time_range == '2y' %}selected{% endif %}>Ultimi 2 anni</option>
+                    <option value="5y" {% if time_range == '5y' %}selected{% endif %}>Ultimi 5 anni</option>
+                    <option value="custom" {% if time_range == 'custom' %}selected{% endif %}>Intervallo personalizzato</option>
+                </select>
+            </div>
+            
+            <!-- Data Aggregation -->
+            <div class="me-3">
+                <select class="form-select form-select-sm" id="aggregation" name="aggregation" style="min-width: 120px;">
+                    <option value="auto" {% if aggregation == 'auto' or request.args.get('is_auto_aggregation') == 'true' %}selected{% endif %}>Auto</option>
+                    <option value="day" {% if aggregation == 'day' and request.args.get('is_auto_aggregation') != 'true' %}selected{% endif %}>Giornaliera</option>
+                    <option value="week" {% if aggregation == 'week' and request.args.get('is_auto_aggregation') != 'true' %}selected{% endif %}>Settimanale</option>
+                    <option value="month" {% if aggregation == 'month' and request.args.get('is_auto_aggregation') != 'true' %}selected{% endif %}>Mensile</option>
+                    <option value="quarter" {% if aggregation == 'quarter' and request.args.get('is_auto_aggregation') != 'true' %}selected{% endif %}>Trimestrale</option>
+                    <option value="year" {% if aggregation == 'year' and request.args.get('is_auto_aggregation') != 'true' %}selected{% endif %}>Annuale</option>
+                </select>
+            </div>
+            
+            <!-- Energy Type - Icon buttons -->
+            <div class="ms-auto">
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="energy_type" id="energy-type-total" value="total" {% if energy_type == 'total' %}checked{% endif %} autocomplete="off">
+                    <label class="btn btn-outline-primary btn-sm" for="energy-type-total" title="Totale">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="energy_type" id="energy-type-heating" value="heating" {% if energy_type == 'heating' %}checked{% endif %} autocomplete="off">
+                    <label class="btn btn-outline-primary btn-sm" for="energy-type-heating" title="Riscaldamento">
+                        <i class="bi bi-thermometer-half"></i>
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="energy_type" id="energy-type-hot-water" value="hot_water" {% if energy_type == 'hot_water' %}checked{% endif %} autocomplete="off">
+                    <label class="btn btn-outline-primary btn-sm" for="energy-type-hot-water" title="Acqua Calda">
+                        <i class="bi bi-water"></i>
+                    </label>
                 </div>
             </div>
             
             <!-- Custom Date Range Inputs (initially hidden) -->
-            <div class="row custom-date-range" {% if time_range != 'custom' %}style="display: none;"{% endif %}>
-                <div class="col-md-4 mb-3">
-                    <label for="start-date" class="form-label">Data Inizio</label>
-                    <input type="date" class="form-control" id="start-date" name="start_date" value="{{ start_date|string }}">
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label for="end-date" class="form-label">Data Fine</label>
-                    <input type="date" class="form-control" id="end-date" name="end_date" value="{{ end_date|string }}">
-                </div>
-                <div class="col-md-4 d-flex align-items-end mb-3">
-                    <button type="submit" class="btn btn-primary">Applica</button>
+            <div class="custom-date-range ms-3" {% if time_range != 'custom' %}style="display: none;"{% endif %}>
+                <div class="d-flex">
+                    <div class="input-group input-group-sm me-2" style="width: 150px;">
+                        <input type="date" class="form-control" id="start-date" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                    </div>
+                    <div class="input-group input-group-sm me-2" style="width: 150px;">
+                        <input type="date" class="form-control" id="end-date" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-search"></i>
+
                 </div>
             </div>
         </form>
@@ -77,13 +82,8 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header">
                 <h5 class="card-title mb-0">Energia</h5>
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-outline-secondary energy-view active" data-view="consumption">Consumo</button>
-                    <button type="button" class="btn btn-outline-secondary energy-view" data-view="production">Produzione</button>
-                    <button type="button" class="btn btn-outline-secondary energy-view" data-view="both">Entrambi</button>
-                </div>
             </div>
             <div class="card-body">
                 <div class="chart-container" style="position: relative; height:400px;">
@@ -183,6 +183,14 @@
     
     console.log("Dati del grafico ricevuti:", chartData);
     
+    // Initialize the data-was-auto attribute on page load
+    var aggregationSelect = document.getElementById('aggregation');
+    if (aggregationSelect.value === 'auto') {
+        aggregationSelect.setAttribute('data-was-auto', 'true');
+    } else {
+        aggregationSelect.setAttribute('data-was-auto', 'false');
+    }
+    
     // Render energy chart
     if (chartData.energy_chart) {
         try {
@@ -190,38 +198,6 @@
             console.log("Dati del grafico energetico parsati con successo");
             var energyCtx = document.getElementById('energy-chart').getContext('2d');
             var energyChart = new Chart(energyCtx, energyChartConfig);
-            
-            // Handle energy view changes (consumption, production, both)
-            document.querySelectorAll('.energy-view').forEach(function(button) {
-                button.addEventListener('click', function() {
-                    // Update active button
-                    document.querySelectorAll('.energy-view').forEach(function(b) {
-                        b.classList.remove('active');
-                    });
-                    this.classList.add('active');
-                    
-                    // Update chart data based on view
-                    var view = this.getAttribute('data-view');
-                    
-                    // Toggle datasets visibility based on view
-                    if (view === 'consumption') {
-                        energyChart.data.datasets.forEach(function(dataset) {
-                            dataset.hidden = dataset.label.toLowerCase().includes('production');
-                        });
-                    } else if (view === 'production') {
-                        energyChart.data.datasets.forEach(function(dataset) {
-                            dataset.hidden = !dataset.label.toLowerCase().includes('production');
-                        });
-                    } else {
-                        // 'both' view - show all
-                        energyChart.data.datasets.forEach(function(dataset) {
-                            dataset.hidden = false;
-                        });
-                    }
-                    
-                    energyChart.update();
-                });
-            });
         } catch (e) {
             console.error("Errore durante il parsing dei dati del grafico energetico:", e);
             document.getElementById('energy-chart').parentNode.innerHTML = '<div class="alert alert-danger">Errore durante il caricamento del grafico energetico: ' + e.message + '</div>';
@@ -283,21 +259,42 @@
     document.getElementById('time-range').addEventListener('change', function() {
         var selectedValue = this.value;
         var customDateRange = document.querySelector('.custom-date-range');
+        var aggregationSelect = document.getElementById('aggregation');
+        var isAutoAggregation = document.getElementById('is-auto-aggregation');
         
         if (selectedValue === 'custom') {
             customDateRange.style.display = 'flex';
         } else {
             customDateRange.style.display = 'none';
+            
+            // If the current selection is 'auto', make sure we keep it as 'auto'
+            // and set the hidden field to true to ensure backend recalculates
+            if (aggregationSelect.value === 'auto') {
+                isAutoAggregation.value = 'true';
+            }
+            
             document.getElementById('dashboard-form').submit();
         }
     });
     
     // Handle form field changes (auto-submit)
-    document.getElementById('energy-type').addEventListener('change', function() {
+    document.getElementById('energy-type-total').addEventListener('change', function() {
+        document.getElementById('dashboard-form').submit();
+    });
+    
+    document.getElementById('energy-type-heating').addEventListener('change', function() {
+        document.getElementById('dashboard-form').submit();
+    });
+    
+    document.getElementById('energy-type-hot-water').addEventListener('change', function() {
         document.getElementById('dashboard-form').submit();
     });
     
     document.getElementById('aggregation').addEventListener('change', function() {
+        // Update the hidden field that tracks if we're using auto aggregation
+        var isAutoAggregation = document.getElementById('is-auto-aggregation');
+        isAutoAggregation.value = (this.value === 'auto') ? 'true' : 'false';
+        
         document.getElementById('dashboard-form').submit();
     });
 })();

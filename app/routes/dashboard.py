@@ -92,6 +92,9 @@ def aggregate_data(data, aggregation, date_key=0):
         if key not in aggregated_data:
             # Copy all fields from the first item
             aggregated_data[key] = list(item)
+            # Store the original date object for later formatting
+            if aggregation != 'quarter':  # Quarter is already a string
+                aggregated_data[key][date_key] = key
         else:
             # Sum numeric values (skip the date field)
             for i in range(len(item)):
@@ -103,21 +106,6 @@ def aggregate_data(data, aggregation, date_key=0):
     # Convert the dictionary back to a list
     result = list(aggregated_data.values())
     
-    # Format date labels for display
-    for item in result:
-        if aggregation == 'day':
-            item[date_key] = item[date_key].strftime('%Y-%m-%d')
-        elif aggregation == 'week':
-            end_of_week = item[date_key] + timedelta(days=6)
-            item[date_key] = f"{item[date_key].strftime('%Y-%m-%d')} to {end_of_week.strftime('%Y-%m-%d')}"
-        elif aggregation == 'month':
-            item[date_key] = item[date_key].strftime('%Y-%m')
-        elif aggregation == 'quarter':
-            # Already formatted as YYYY-QN
-            pass
-        elif aggregation == 'year':
-            item[date_key] = str(item[date_key])
-    
     # Sort by date
     result.sort(key=lambda x: x[date_key])
     
@@ -127,15 +115,22 @@ def determine_aggregation(start_date, end_date):
     """Determine the appropriate data aggregation based on date range."""
     days_diff = (end_date - start_date).days
     
+    logger.info(f"Determining aggregation for date range: {start_date} to {end_date} ({days_diff} days)")
+    
     if days_diff <= 31:
-        return 'day'  # Show daily data for ranges <= 31 days
+        logger.info("Using 'day' aggregation (≤ 31 days)")
+        return 'day'  # Show daily data for ranges ≤ 31 days
     elif days_diff <= 90:
-        return 'week'  # Show weekly data for ranges <= 90 days
+        logger.info("Using 'week' aggregation (≤ 90 days)")
+        return 'week'  # Show weekly data for ranges ≤ 90 days
     elif days_diff <= 365:
-        return 'month'  # Show monthly data for ranges <= 1 year
+        logger.info("Using 'month' aggregation (≤ 365 days)")
+        return 'month'  # Show monthly data for ranges ≤ 1 year
     elif days_diff <= 365 * 2:
-        return 'quarter'  # Show quarterly data for ranges <= 2 years
+        logger.info("Using 'quarter' aggregation (≤ 2 years)")
+        return 'quarter'  # Show quarterly data for ranges ≤ 2 years
     else:
+        logger.info("Using 'year' aggregation (> 2 years)")
         return 'year'  # Show yearly data for ranges > 2 years
 
 @bp.route('/')
@@ -150,10 +145,19 @@ def index():
     # Get date range
     start_date, end_date = get_date_range(time_range)
     
+    # Check if auto aggregation is being used
+    is_auto_aggregation = request.args.get('is_auto_aggregation') == 'true'
+    logger.info(f"Is auto aggregation: {is_auto_aggregation}")
+    
     # Determine aggregation level
-    aggregation = request.args.get('aggregation')
-    if not aggregation:
-        aggregation = determine_aggregation(start_date, end_date)
+    aggregation = request.args.get('aggregation', default='auto')
+    logger.info(f"Requested aggregation from URL: {aggregation}")
+    
+    # Handle auto aggregation - always recalculate when auto is being used
+    if aggregation == 'auto' or is_auto_aggregation:
+        calculated_aggregation = determine_aggregation(start_date, end_date)
+        logger.info(f"Auto-determined aggregation: {calculated_aggregation}")
+        aggregation = calculated_aggregation
     
     # Get data from database
     db = Database()
@@ -165,26 +169,136 @@ def index():
     logger.info(f"Retrieved {len(temp_data) if temp_data else 0} temperature data points")
     
     # Aggregate data if needed
+    logger.info(f"Using aggregation: {aggregation}")
     if aggregation != 'day':
+        logger.info(f"Aggregating data with method: {aggregation}")
         energy_data = aggregate_data(energy_data, aggregation)
         temp_data = aggregate_data(temp_data, aggregation)
+        logger.info(f"After aggregation: {len(energy_data) if energy_data else 0} energy data points, {len(temp_data) if temp_data else 0} temperature data points")
     
     # Create chart data
     charts = {}
     
-    # Energy consumption & production chart
+    # Italian day and month names
+    italian_days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
+    italian_months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
+                     'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
+    
+    # Log the first few data points to understand their structure
+    if energy_data and len(energy_data) > 0:
+        logger.info(f"First data point type: {type(energy_data[0])}")
+        logger.info(f"First date type: {type(energy_data[0][0])}")
+        logger.info(f"First date value: {energy_data[0][0]}")
+        
+        # If it's a string, try to parse it
+        if isinstance(energy_data[0][0], str):
+            logger.info(f"Date is a string: {energy_data[0][0]}")
+            try:
+                # Try to parse as date
+                parsed_date = datetime.strptime(energy_data[0][0], '%Y-%m-%d').date()
+                logger.info(f"Parsed date: {parsed_date}")
+            except ValueError as e:
+                logger.info(f"Could not parse date: {e}")
+    
+    # Energy chart
     if energy_data:
-        # Prepare data for chart
         timestamps = []
         consumed_values = []
         produced_values = []
+        diesel_equivalent = []
         
-        for row in energy_data:
-            # Format date
-            if isinstance(row[0], str):
-                timestamps.append(row[0])
+        current_date = datetime.now().date()
+        
+        # Prepare data for chart
+        for i, row in enumerate(energy_data):
+            # Log a few rows to see what's happening
+            if i < 5:
+                logger.info(f"Processing row {i}: {row}")
+                logger.info(f"Date type: {type(row[0])}")
+                if isinstance(row[0], str):
+                    logger.info(f"Date string: {row[0]}")
+                elif isinstance(row[0], date):
+                    logger.info(f"Date object: {row[0]}")
+                else:
+                    logger.info(f"Unknown date type: {row[0]}")
+            
+            # Format date labels based on aggregation
+            if isinstance(row[0], date):
+                date_obj = row[0]
+                if aggregation == 'day':
+                    # Format as "Giorno della settimana, DD Mese"
+                    day_of_week = italian_days[date_obj.weekday()]
+                    month_name = italian_months[date_obj.month - 1]
+                    formatted_date = f"{day_of_week}, {date_obj.day} {month_name}"
+                    timestamps.append(formatted_date)
+                    if i < 5:
+                        logger.info(f"Formatted daily date: {formatted_date}")
+                elif aggregation == 'week':
+                    # Get ISO week number
+                    year, week_num, _ = date_obj.isocalendar()
+                    formatted_date = f"Settimana {week_num}, {year}"
+                    timestamps.append(formatted_date)
+                    if i < 5:
+                        logger.info(f"Formatted weekly date: {formatted_date}")
+                elif aggregation == 'month':
+                    # Format as "Mese YYYY"
+                    month_name = italian_months[date_obj.month - 1]
+                    formatted_date = f"{month_name} {date_obj.year}"
+                    timestamps.append(formatted_date)
+                    if i < 5:
+                        logger.info(f"Formatted monthly date: {formatted_date}")
+                elif aggregation == 'year':
+                    # Just show the year
+                    formatted_date = f"Anno {date_obj.year}"
+                    timestamps.append(formatted_date)
+                    if i < 5:
+                        logger.info(f"Formatted yearly date: {formatted_date}")
+                else:
+                    # Default format
+                    formatted_date = date_obj.strftime('%Y-%m-%d')
+                    timestamps.append(formatted_date)
+                    if i < 5:
+                        logger.info(f"Formatted default date: {formatted_date}")
+            elif isinstance(row[0], str):
+                if '-Q' in row[0]:
+                    # Handle quarter format
+                    parts = row[0].split('-Q')
+                    if len(parts) == 2:
+                        formatted_date = f"Trimestre {parts[1]} {parts[0]}"
+                        timestamps.append(formatted_date)
+                        if i < 5:
+                            logger.info(f"Formatted quarterly date: {formatted_date}")
+                    else:
+                        timestamps.append(row[0])
+                        if i < 5:
+                            logger.info(f"Using original string date: {row[0]}")
+                else:
+                    # Try to parse the date string
+                    try:
+                        date_obj = datetime.strptime(row[0], '%Y-%m-%d').date()
+                        if aggregation == 'day':
+                            # Format as "Giorno della settimana, DD Mese"
+                            day_of_week = italian_days[date_obj.weekday()]
+                            month_name = italian_months[date_obj.month - 1]
+                            formatted_date = f"{day_of_week}, {date_obj.day} {month_name}"
+                            timestamps.append(formatted_date)
+                            if i < 5:
+                                logger.info(f"Formatted daily date from string: {formatted_date}")
+                        else:
+                            # Use original string for other aggregations
+                            timestamps.append(row[0])
+                            if i < 5:
+                                logger.info(f"Using original string date: {row[0]}")
+                    except ValueError:
+                        # If can't parse, use as is
+                        timestamps.append(row[0])
+                        if i < 5:
+                            logger.info(f"Could not parse date string, using as is: {row[0]}")
             else:
-                timestamps.append(row[0].strftime('%Y-%m-%d'))
+                # Use as is if not a date object or string
+                timestamps.append(str(row[0]))
+                if i < 5:
+                    logger.info(f"Using unknown date type as string: {str(row[0])}")
             
             # Energy values
             consumed_values.append(float(row[1] or 0))  # Consumption
@@ -250,13 +364,38 @@ def index():
         cop_values = []
         
         for row in energy_data:
-            # Format date
-            if isinstance(row[0], str):
-                timestamps.append(row[0])
-                date_obj = datetime.strptime(row[0], '%Y-%m-%d').date()
-            else:
-                timestamps.append(row[0].strftime('%Y-%m-%d'))
+            # Format date labels based on aggregation (same as above)
+            if isinstance(row[0], date):
                 date_obj = row[0]
+                if aggregation == 'day':
+                    # Format as "Giorno della settimana, DD Mese"
+                    day_of_week = italian_days[date_obj.weekday()]
+                    month_name = italian_months[date_obj.month - 1]
+                    timestamps.append(f"{day_of_week}, {date_obj.day} {month_name}")
+                elif aggregation == 'week':
+                    # Get ISO week number
+                    year, week_num, _ = date_obj.isocalendar()
+                    timestamps.append(f"Settimana {week_num}, {year}")
+                elif aggregation == 'month':
+                    # Format as "Mese YYYY"
+                    month_name = italian_months[date_obj.month - 1]
+                    timestamps.append(f"{month_name} {date_obj.year}")
+                elif aggregation == 'year':
+                    # Just show the year
+                    timestamps.append(f"Anno {date_obj.year}")
+                else:
+                    # Default format
+                    timestamps.append(date_obj.strftime('%Y-%m-%d'))
+            elif isinstance(row[0], str) and '-Q' in row[0]:
+                # Handle quarter format
+                parts = row[0].split('-Q')
+                if len(parts) == 2:
+                    timestamps.append(f"Trimestre {parts[1]} {parts[0]}")
+                else:
+                    timestamps.append(row[0])
+            else:
+                # Use as is if not a date object
+                timestamps.append(str(row[0]))
             
             # Calculate costs
             electricity_cost = float(row[5] or 0)  # cost column
@@ -268,8 +407,8 @@ def index():
             cop_values.append(cop)
             
             # Get prices for this month/year
-            year = date_obj.year if isinstance(date_obj, date) else current_date.year
-            month = date_obj.month if isinstance(date_obj, date) else current_date.month
+            year = row[0].year if isinstance(row[0], date) else current_date.year
+            month = row[0].month if isinstance(row[0], date) else current_date.month
             
             price_data = db.get_prices_for_month(year, month)
             
@@ -408,16 +547,42 @@ def index():
     
     # Temperature chart
     if temp_data:
-        # Prepare data for chart
         timestamps = []
         outdoor_temps = []
         
         for row in temp_data:
-            # Format date
-            if isinstance(row[0], str):
-                timestamps.append(row[0])
+            # Format date labels based on aggregation (same as above)
+            if isinstance(row[0], date):
+                date_obj = row[0]
+                if aggregation == 'day':
+                    # Format as "Giorno della settimana, DD Mese"
+                    day_of_week = italian_days[date_obj.weekday()]
+                    month_name = italian_months[date_obj.month - 1]
+                    timestamps.append(f"{day_of_week}, {date_obj.day} {month_name}")
+                elif aggregation == 'week':
+                    # Get ISO week number
+                    year, week_num, _ = date_obj.isocalendar()
+                    timestamps.append(f"Settimana {week_num}, {year}")
+                elif aggregation == 'month':
+                    # Format as "Mese YYYY"
+                    month_name = italian_months[date_obj.month - 1]
+                    timestamps.append(f"{month_name} {date_obj.year}")
+                elif aggregation == 'year':
+                    # Just show the year
+                    timestamps.append(f"Anno {date_obj.year}")
+                else:
+                    # Default format
+                    timestamps.append(date_obj.strftime('%Y-%m-%d'))
+            elif isinstance(row[0], str) and '-Q' in row[0]:
+                # Handle quarter format
+                parts = row[0].split('-Q')
+                if len(parts) == 2:
+                    timestamps.append(f"Trimestre {parts[1]} {parts[0]}")
+                else:
+                    timestamps.append(row[0])
             else:
-                timestamps.append(row[0].strftime('%Y-%m-%d'))
+                # Use as is if not a date object
+                timestamps.append(str(row[0]))
             
             # Temperature values - only outdoor temperature is available now
             outdoor_temps.append(float(row[1] or 0))
