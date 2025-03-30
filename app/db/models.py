@@ -41,7 +41,7 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Energy usage data from MELCloud
+        # Energy usage data from MELCloud (with added temperature column)
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS energy_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,19 +59,7 @@ class Database:
             device_name TEXT,
             operation_mode TEXT,
             demand_percentage INTEGER,
-            UNIQUE(date)
-        )
-        ''')
-        
-        # Temperature data from Home Assistant
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS temperature_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date DATE NOT NULL,
-            indoor_temp REAL NOT NULL,
-            outdoor_temp REAL NOT NULL,
-            flow_temp REAL,
-            return_temp REAL,
+            outdoor_temp REAL,
             UNIQUE(date)
         )
         ''')
@@ -147,8 +135,8 @@ class Database:
             # Record already exists
             return False
     
-    def add_temperature_data(self, timestamp, indoor_temp, outdoor_temp, flow_temp=None, return_temp=None):
-        """Add temperature data from Home Assistant or MELCloud."""
+    def add_temperature_data(self, timestamp, outdoor_temp, indoor_temp=None, flow_temp=None, return_temp=None):
+        """Add temperature data to energy_data table."""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -161,10 +149,24 @@ class Database:
             date = timestamp  # Assume it's already a date
         
         try:
-            cursor.execute('''
-            INSERT OR REPLACE INTO temperature_data (date, indoor_temp, outdoor_temp, flow_temp, return_temp)
-            VALUES (?, ?, ?, ?, ?)
-            ''', (date, indoor_temp, outdoor_temp, flow_temp, return_temp))
+            # First check if a record exists for this date
+            cursor.execute('SELECT id FROM energy_data WHERE date = ?', (date,))
+            existing = cursor.fetchone()
+            
+            if existing:
+                # Update existing record
+                cursor.execute('''
+                UPDATE energy_data 
+                SET outdoor_temp = ?
+                WHERE date = ?
+                ''', (outdoor_temp, date))
+            else:
+                # Insert new record with just temperature data
+                cursor.execute('''
+                INSERT INTO energy_data (date, outdoor_temp)
+                VALUES (?, ?)
+                ''', (date, outdoor_temp))
+                
             conn.commit()
             return True
         except sqlite3.IntegrityError:
@@ -240,9 +242,9 @@ class Database:
         cursor = conn.cursor()
         
         cursor.execute('''
-        SELECT date, indoor_temp, outdoor_temp, flow_temp, return_temp 
-        FROM temperature_data
-        WHERE date >= ? AND date <= ?
+        SELECT date, outdoor_temp
+        FROM energy_data
+        WHERE date >= ? AND date <= ? AND outdoor_temp IS NOT NULL
         ORDER BY date
         ''', (start_date, end_date))
         
