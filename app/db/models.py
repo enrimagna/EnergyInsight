@@ -205,6 +205,20 @@ class Database:
             conn.rollback()
             return False
     
+    def get_temperature_data(self, start_date, end_date):
+        """Get temperature data for the specified date range."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT date, outdoor_temp
+        FROM energy_data
+        WHERE date >= ? AND date <= ? AND outdoor_temp IS NOT NULL
+        ORDER BY date
+        ''', (start_date, end_date))
+        
+        return cursor.fetchall()
+    
     def update_prices(self, electricity_price, diesel_price, diesel_efficiency, year=None, month=None):
         """Update price information for a specific month and year.
         
@@ -263,20 +277,6 @@ class Database:
                cop, power_consumption, cost, operation_mode
         FROM energy_data
         WHERE date >= ? AND date <= ?
-        ORDER BY date
-        ''', (start_date, end_date))
-        
-        return cursor.fetchall()
-    
-    def get_temperature_data(self, start_date, end_date):
-        """Get temperature data for the specified date range."""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-        SELECT date, outdoor_temp
-        FROM energy_data
-        WHERE date >= ? AND date <= ? AND outdoor_temp IS NOT NULL
         ORDER BY date
         ''', (start_date, end_date))
         

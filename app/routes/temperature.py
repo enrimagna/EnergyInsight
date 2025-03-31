@@ -494,3 +494,135 @@ def index():
     db.close_connection()
     
     return render_template('temperature/index.html', **context)
+
+@bp.route('/edit', methods=('GET', 'POST'))
+def edit():
+    """Settings page for editing temperature data."""
+    # Get database connection
+    db = Database()
+    
+    if request.method == 'POST':
+        logger.info(f"Form data keys: {list(request.form.keys())}")
+        
+        # Handle editing a specific temperature row
+        if 'update_temp_row' in request.form:
+            temp_id = request.form.get('temp_id', '')
+            temp_date = request.form.get('temp_date', '')
+            outdoor_temp = request.form.get('outdoor_temp', '')
+            
+            # Log the received values for debugging
+            logger.info(f"Received temperature row update request - ID: {temp_id}, Date: {temp_date}, "
+                        f"Outdoor Temperature: {outdoor_temp}")
+            
+            # Validate inputs
+            errors = False
+            if not temp_date or not outdoor_temp:
+                flash('All fields are required', 'danger')
+                errors = True
+            else:
+                try:
+                    # Convert date string to date object
+                    date_obj = datetime.strptime(temp_date, '%Y-%m-%d').date()
+                    outdoor_temp = float(outdoor_temp)
+                    
+                    # Log the converted values
+                    logger.info(f"Converted values - Date: {date_obj}, Outdoor Temp: {outdoor_temp}")
+                    
+                    if outdoor_temp < -50 or outdoor_temp > 60:  # Reasonable temperature range
+                        flash('Invalid temperature value', 'danger')
+                        errors = True
+                except ValueError:
+                    flash('Invalid date or temperature value', 'danger')
+                    errors = True
+            
+            if not errors:
+                try:
+                    # Update the database with the new temperature value
+                    result = db.add_temperature_data(
+                        timestamp=date_obj,
+                        outdoor_temp=outdoor_temp
+                    )
+                    
+                    if result:
+                        flash(f'Temperatura per {temp_date} aggiornata con successo', 'success')
+                    else:
+                        flash('Errore durante l\'aggiornamento della temperatura', 'danger')
+                except Exception as e:
+                    logger.error(f"Error updating temperature row: {str(e)}")
+                    flash(f'Errore durante l\'aggiornamento della temperatura: {str(e)}', 'danger')
+    
+    # Get temperature data for display
+    # Default to current year and month
+    current_date = datetime.now()
+    selected_year = request.args.get('year', str(current_date.year))
+    selected_month = request.args.get('month', str(current_date.month))
+    
+    try:
+        selected_year = int(selected_year)
+        selected_month = int(selected_month)
+    except ValueError:
+        selected_year = current_date.year
+        selected_month = current_date.month
+    
+    # Get start and end date for the selected month
+    start_date = datetime(selected_year, selected_month, 1).date()
+    if selected_month == 12:
+        end_date = datetime(selected_year + 1, 1, 1).date() - timedelta(days=1)
+    else:
+        end_date = datetime(selected_year, selected_month + 1, 1).date() - timedelta(days=1)
+    
+    # Get temperature data for the selected month
+    temp_data = db.get_temperature_data(start_date, end_date)
+    
+    # Format temperature data for display
+    formatted_temp_data = []
+    if temp_data:
+        for temp in temp_data:
+            # Convert date to string if it's a date object
+            if isinstance(temp[0], date):
+                date_str = temp[0].strftime('%Y-%m-%d')
+            else:
+                date_str = temp[0]
+            
+            formatted_temp_data.append({
+                'date': date_str,
+                'display_date': datetime.strptime(date_str, '%Y-%m-%d').strftime('%d %B %Y'),
+                'outdoor_temp': temp[1]
+            })
+    
+    # Get all years with temperature data for the year selector
+    all_years = set()
+    all_temp_data = db.get_temperature_data(
+        datetime(2000, 1, 1).date(),  # Start from year 2000
+        datetime(2100, 1, 1).date()   # End at year 2100
+    )
+    
+    if all_temp_data:
+        for temp in all_temp_data:
+            if isinstance(temp[0], date):
+                all_years.add(temp[0].year)
+            elif isinstance(temp[0], str):
+                try:
+                    year = datetime.strptime(temp[0], '%Y-%m-%d').year
+                    all_years.add(year)
+                except ValueError:
+                    pass
+    
+    # Sort years in descending order
+    years_list = sorted(list(all_years), reverse=True)
+    
+    # If no years found, add current year
+    if not years_list:
+        years_list = [current_date.year]
+    
+    # Clean up
+    db.close_connection()
+    
+    return render_template('temperature/edit.html', 
+                           temp_data=formatted_temp_data,
+                           years=years_list,
+                           selected_year=selected_year,
+                           selected_month=selected_month,
+                           current_year=current_date.year,
+                           current_month=current_date.month,
+                           active_page='temperature')

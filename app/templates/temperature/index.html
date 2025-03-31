@@ -4,8 +4,11 @@
 
 {% block page_title %}
 <div class="row">
-    <div class="col-12">
+    <div class="col-12 d-flex justify-content-between align-items-center">
         <h1 class="mb-4">Temperature e COP</h1>
+        <a href="{{ url_for('temperature.edit') }}" class="btn btn-outline-danger">
+            <i class="bi bi-pencil-square me-1"></i> Modifica Temperature
+        </a>
     </div>
 </div>
 {% endblock %}
@@ -80,11 +83,10 @@
 
 {% block scripts %}
 <script>
+/* eslint-disable */
 (function() {
     // Parse chart data from server
-    /* eslint-disable */
     var chartData = {{ charts|tojson|safe }};
-    /* eslint-enable */
     
     console.log("Dati del grafico ricevuti:", chartData);
     
@@ -139,5 +141,6 @@
         }
     }
 })();
+/* eslint-enable */
 </script>
 {% endblock %}
