@@ -640,24 +640,10 @@ class MELCloudCollector:
             
             if result:
                 logger.info(f"Successfully stored energy data for {data['date']}")
+                return True
             else:
                 logger.warning(f"Failed to store energy data for {data['date']}")
-            
-            # Add temperature data to database
-            temp_result = self.db.add_temperature_data(
-                timestamp=data["date"],
-                indoor_temp=data["room_temp"],
-                outdoor_temp=data["outdoor_temp"],
-                flow_temp=data["flow_temp"],
-                return_temp=data["return_temp"]
-            )
-            
-            if temp_result:
-                logger.info(f"Successfully stored temperature data for {data['date']}")
-            else:
-                logger.warning(f"Failed to store temperature data for {data['date']}")
-            
-            return result and temp_result
+                return False
             
         except Exception as e:
             logger.error(f"Error storing data in database: {str(e)}")

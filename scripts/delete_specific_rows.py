@@ -85,8 +85,8 @@ def delete_rows_by_id_range(start_id, end_id, table_name="energy_data"):
 
 def main():
     """Main function to run the script."""
-    start_id = 230
-    end_id = 230
+    start_id = 274
+    end_id = 277
     table_name = "energy_data"
     
     logger.info(f"Starting deletion of rows with IDs from {start_id} to {end_id}...")
