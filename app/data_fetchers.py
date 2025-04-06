@@ -93,307 +93,377 @@ class MELCloudFetcher:
         self.password = password
         self.db = db if db else Database()
         
-    async def test_connection(self):
+    async def test_connection(self, max_retries=3, retry_delay=5):
         """Test the connection to MELCloud without fetching or processing data."""
         session = None
-        try:
-            # First try to import the real module
-            try:
-                import pymelcloud
-                logger.info("Using real pymelcloud library for connection test")
-                session = await pymelcloud.login(self.username, self.password)
-                if not session:
-                    logger.error("pymelcloud login returned None")
-                    raise ValueError("Failed to authenticate with MELCloud")
-            except ImportError:
-                # If not available, use mock implementation
-                logger.warning("pymelcloud not available, using mock implementation for test")
-                session = await mock_login(self.username, self.password)
-            
-            logger.info(f"Session type: {type(session)}")
-            
-            # Safely check if session contains devices
-            devices = []
-            if session is None:
-                logger.error("Session is None")
-                raise ValueError("Failed to create a valid session with MELCloud")
-                
-            # Try to get devices using get method first (for real pymelcloud)
-            if hasattr(session, 'get'):
-                logger.info("Session has 'get' method, using it to retrieve devices")
-                devices = session.get('devices', [])
-            # Then try direct dictionary access (for our mock)
-            elif isinstance(session, dict) and 'devices' in session:
-                logger.info("Session is a dict with 'devices' key, accessing directly")
-                devices = session['devices']
-            else:
-                logger.error(f"Session doesn't have expected structure: {session}")
-                raise ValueError("Unexpected session structure from MELCloud")
-                
-            # Check if we have any devices
-            if not devices:
-                logger.error("No devices found in MELCloud session")
-                raise ValueError("No devices found in MELCloud account")
-                
-            # Just check if we can access the first device
-            device = devices[0]
-            device_name = getattr(device, 'name', 'Unknown')
-            logger.info(f"Test successful - Found device: {device_name}")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error testing MELCloud connection: {str(e)}")
-            raise  # Re-raise the exception for proper error handling
-        finally:
-            # Cleanup session if it's from the real pymelcloud library
-            if session and hasattr(session, 'close') and callable(session.close):
-                await session.close()
-                logger.info("MELCloud session closed properly")
+        retries = 0
         
-    async def fetch_data(self):
+        while retries < max_retries:
+            try:
+                # Always ensure previous session is closed
+                if session and hasattr(session, 'close') and callable(session.close):
+                    await session.close()
+                    session = None
+                
+                # First try to import the real module
+                try:
+                    import pymelcloud
+                    logger.info("Using real pymelcloud library for connection test")
+                    session = await pymelcloud.login(self.username, self.password)
+                    if not session:
+                        logger.error("pymelcloud login returned None")
+                        raise ValueError("Failed to authenticate with MELCloud")
+                except ImportError:
+                    # If not available, use mock implementation
+                    logger.warning("pymelcloud not available, using mock implementation for test")
+                    session = await mock_login(self.username, self.password)
+                
+                logger.info(f"Session type: {type(session)}")
+                
+                # Safely check if session contains devices
+                devices = []
+                if session is None:
+                    logger.error("Session is None")
+                    raise ValueError("Failed to create a valid session with MELCloud")
+                    
+                # Try to get devices using get method first (for real pymelcloud)
+                if hasattr(session, 'get') and callable(session.get):
+                    logger.info("Session has 'get' method, using it to retrieve devices")
+                    devices = session.get('devices', [])
+                # Then try direct dictionary access (for our mock)
+                elif isinstance(session, dict) and 'devices' in session:
+                    logger.info("Session is a dict with 'devices' key, accessing directly")
+                    devices = session['devices']
+                else:
+                    logger.error(f"Session doesn't have expected structure: {session}")
+                    raise ValueError("Unexpected session structure from MELCloud")
+                    
+                # Check if we have any devices
+                if not devices:
+                    logger.error(f"No devices found in MELCloud session (attempt {retries+1}/{max_retries})")
+                    retries += 1
+                    if retries < max_retries:
+                        logger.info(f"Retrying in {retry_delay} seconds...")
+                        await asyncio.sleep(retry_delay)
+                        continue
+                    raise ValueError("No devices found in MELCloud account after multiple attempts")
+                
+                # Just check if we can access the first device
+                device = devices[0]
+                device_name = getattr(device, 'name', 'Unknown')
+                logger.info(f"Test successful - Found device: {device_name}")
+                
+                return True
+                
+            except Exception as e:
+                logger.error(f"Error testing MELCloud connection (attempt {retries+1}/{max_retries}): {str(e)}")
+                retries += 1
+                if retries < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    raise  # Re-raise the exception for proper error handling
+            finally:
+                # Cleanup session if it's from the real pymelcloud library
+                if session and hasattr(session, 'close') and callable(session.close):
+                    await session.close()
+                    logger.info("MELCloud session closed properly")
+        
+    async def fetch_data(self, max_retries=3, retry_delay=5):
         """Fetch energy usage data from MELCloud and store in database."""
         session = None
-        try:
-            # First try to import the real module
+        retries = 0
+        
+        while retries < max_retries:
             try:
-                import pymelcloud
-                logger.info("Using real pymelcloud library")
-                session = await pymelcloud.login(self.username, self.password)
-                if not session:
-                    logger.error("pymelcloud login returned None")
-                    raise ValueError("Failed to authenticate with MELCloud")
-            except ImportError:
-                # If not available, use mock implementation
-                logger.warning("pymelcloud not available, using mock implementation")
-                session = await mock_login(self.username, self.password)
+                # Always ensure previous session is closed
+                if session and hasattr(session, 'close') and callable(session.close):
+                    await session.close()
+                    session = None
                 
-            # Check if session contains devices
-            if not session or "devices" not in session or not session["devices"]:
-                logger.error("No devices found in MELCloud session")
-                raise ValueError("No devices found in MELCloud account")
-                
-            device = session["devices"][0]  # Assuming first device is the heat pump
-            logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
-            
-            # Get energy report with error handling
-            try:
-                energy_report = device.energy_report()
-                logger.info("Successfully retrieved energy report")
-            except Exception as e:
-                logger.error(f"Error getting energy report: {str(e)}")
-                raise ValueError(f"Failed to get energy report from device: {str(e)}")
-            
-            # Validate energy report structure
-            if not energy_report or not isinstance(energy_report, dict):
-                logger.error(f"Invalid energy report format: {type(energy_report)}")
-                raise ValueError("Energy report has invalid format")
-                
-            # Check if required keys exist
-            required_keys = ['Energy_Consumed', 'Power_Consumed']
-            for key in required_keys:
-                if key not in energy_report:
-                    logger.error(f"Missing key in energy report: {key}")
-                    raise ValueError(f"Energy report missing required data: {key}")
-            
-            # Check if Day data exists
-            if 'Day' not in energy_report['Energy_Consumed'] or 'Day' not in energy_report['Power_Consumed']:
-                logger.error("Missing Day data in energy report")
-                raise ValueError("Energy report missing daily data")
-                
-            # Process daily energy data
-            day_data = energy_report['Energy_Consumed']['Day']
-            if not day_data:
-                logger.warning("No daily energy consumption data found")
-                return True  # Return success but with no data
-                
-            # Process and store each day's data
-            for day_entry in day_data:
+                # First try to import the real module
                 try:
-                    # Get corresponding power data
-                    date_str = day_entry['date']
-                    energy_value = day_entry['value']
-                    
-                    # Find matching power entry for the same date
-                    power_value = None
-                    for power_entry in energy_report['Power_Consumed']['Day']:
-                        if power_entry['date'] == date_str:
-                            power_value = power_entry['value']
-                            break
-                    
-                    if power_value is None:
-                        logger.warning(f"No power data found for date {date_str}")
+                    import pymelcloud
+                    logger.info("Using real pymelcloud library")
+                    session = await pymelcloud.login(self.username, self.password)
+                    if not session:
+                        logger.error("pymelcloud login returned None")
+                        raise ValueError("Failed to authenticate with MELCloud")
+                except ImportError:
+                    # If not available, use mock implementation
+                    logger.warning("pymelcloud not available, using mock implementation")
+                    session = await mock_login(self.username, self.password)
+                
+                # Check for devices using newer API pattern
+                devices = []
+                if hasattr(session, 'get') and callable(session.get):
+                    logger.info("Using session.get() to access devices")
+                    devices = session.get('devices', [])
+                elif isinstance(session, dict) and 'devices' in session:
+                    logger.info("Using dictionary access for devices")
+                    devices = session['devices']
+                
+                if not devices:
+                    logger.error(f"No devices found in MELCloud session (attempt {retries+1}/{max_retries})")
+                    retries += 1
+                    if retries < max_retries:
+                        logger.info(f"Retrying in {retry_delay} seconds...")
+                        await asyncio.sleep(retry_delay)
                         continue
-                    
-                    # Convert date string to datetime
-                    try:
-                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                    except ValueError:
-                        logger.error(f"Invalid date format: {date_str}")
-                        continue
-                    
-                    # Calculate cost based on current electricity price
-                    db = self.db
-                    prices = db.get_current_prices()
-                    if prices:
-                        electricity_price = prices['electricity_price']
-                    else:
-                        # Default price if not set
-                        electricity_price = float(os.getenv('ELECTRICITY_PRICE', 0.28))
-                    
-                    cost = energy_value * electricity_price
-                    
-                    # Store in database
-                    success = db.add_energy_data(date_obj, power_value, energy_value, cost)
-                    if success:
-                        logger.info(f"Added energy data for {date_str}: Energy={energy_value}kWh, Power={power_value}W, Cost=${cost:.2f}")
-                    else:
-                        logger.info(f"Energy data for {date_str} already exists in database")
-                        
+                    raise ValueError("No devices found in MELCloud account after multiple attempts")
+                
+                device = devices[0]  # Assuming first device is the heat pump
+                logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
+                
+                # Get energy report with error handling
+                try:
+                    energy_report = device.energy_report()
+                    logger.info("Successfully retrieved energy report")
                 except Exception as e:
-                    logger.error(f"Error processing day entry {day_entry}: {str(e)}")
-                    continue
-            
-            # Also process weekly data for more historical information
-            week_data = energy_report['Energy_Consumed']['Week']
-            if week_data:
-                for week_entry in week_data:
+                    logger.error(f"Error getting energy report: {str(e)}")
+                    raise ValueError(f"Failed to get energy report from device: {str(e)}")
+                
+                # Validate energy report structure
+                if not energy_report or not isinstance(energy_report, dict):
+                    logger.error(f"Invalid energy report format: {type(energy_report)}")
+                    raise ValueError("Energy report has invalid format")
+                    
+                # Check if required keys exist
+                required_keys = ['Energy_Consumed', 'Power_Consumed']
+                for key in required_keys:
+                    if key not in energy_report:
+                        logger.error(f"Missing key in energy report: {key}")
+                        raise ValueError(f"Energy report missing required data: {key}")
+                
+                # Check if Day data exists
+                if 'Day' not in energy_report['Energy_Consumed'] or 'Day' not in energy_report['Power_Consumed']:
+                    logger.error("Missing Day data in energy report")
+                    raise ValueError("Energy report missing daily data")
+                    
+                # Process daily energy data
+                day_data = energy_report['Energy_Consumed']['Day']
+                if not day_data:
+                    logger.warning("No daily energy consumption data found")
+                    return True  # Return success but with no data
+                    
+                # Process and store each day's data
+                for day_entry in day_data:
                     try:
-                        # Skip if we already have this date from daily data
-                        date_str = week_entry['date']
-                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                        
-                        # Check if this date already exists in the database
-                        # (We don't have a direct method for this, so we'll add it and check the result)
+                        # Get corresponding power data
+                        date_str = day_entry['date']
+                        energy_value = day_entry['value']
                         
                         # Find matching power entry for the same date
                         power_value = None
-                        for power_entry in energy_report['Power_Consumed']['Week']:
+                        for power_entry in energy_report['Power_Consumed']['Day']:
                             if power_entry['date'] == date_str:
                                 power_value = power_entry['value']
                                 break
                         
                         if power_value is None:
-                            logger.warning(f"No weekly power data found for date {date_str}")
+                            logger.warning(f"No power data found for date {date_str}")
                             continue
                         
-                        # Calculate cost
-                        energy_value = week_entry['value']
+                        # Convert date string to datetime
+                        try:
+                            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                        except ValueError:
+                            logger.error(f"Invalid date format: {date_str}")
+                            continue
+                        
+                        # Calculate cost based on current electricity price
                         db = self.db
                         prices = db.get_current_prices()
                         if prices:
                             electricity_price = prices['electricity_price']
                         else:
+                            # Default price if not set
                             electricity_price = float(os.getenv('ELECTRICITY_PRICE', 0.28))
                         
                         cost = energy_value * electricity_price
                         
-                        # Try to add to database (will be skipped if already exists)
+                        # Store in database
                         success = db.add_energy_data(date_obj, power_value, energy_value, cost)
                         if success:
-                            logger.info(f"Added weekly energy data for {date_str}: Energy={energy_value}kWh, Power={power_value}W, Cost=${cost:.2f}")
-                        
+                            logger.info(f"Added energy data for {date_str}: Energy={energy_value}kWh, Power={power_value}W, Cost=${cost:.2f}")
+                        else:
+                            logger.info(f"Energy data for {date_str} already exists in database")
+                            
                     except Exception as e:
-                        logger.error(f"Error processing week entry {week_entry}: {str(e)}")
+                        logger.error(f"Error processing day entry {day_entry}: {str(e)}")
                         continue
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error fetching energy data: {str(e)}")
-            raise
-        finally:
-            # Cleanup session if it's from the real pymelcloud library
-            if session and hasattr(session, 'close') and callable(session.close):
-                await session.close()
-                logger.info("MELCloud session closed properly")
+                
+                # Also process weekly data for more historical information
+                week_data = energy_report['Energy_Consumed']['Week']
+                if week_data:
+                    for week_entry in week_data:
+                        try:
+                            # Skip if we already have this date from daily data
+                            date_str = week_entry['date']
+                            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                            
+                            # Check if this date already exists in the database
+                            # (We don't have a direct method for this, so we'll add it and check the result)
+                            
+                            # Find matching power entry for the same date
+                            power_value = None
+                            for power_entry in energy_report['Power_Consumed']['Week']:
+                                if power_entry['date'] == date_str:
+                                    power_value = power_entry['value']
+                                    break
+                            
+                            if power_value is None:
+                                logger.warning(f"No weekly power data found for date {date_str}")
+                                continue
+                            
+                            # Calculate cost
+                            energy_value = week_entry['value']
+                            db = self.db
+                            prices = db.get_current_prices()
+                            if prices:
+                                electricity_price = prices['electricity_price']
+                            else:
+                                electricity_price = float(os.getenv('ELECTRICITY_PRICE', 0.28))
+                            
+                            cost = energy_value * electricity_price
+                            
+                            # Try to add to database (will be skipped if already exists)
+                            success = db.add_energy_data(date_obj, power_value, energy_value, cost)
+                            if success:
+                                logger.info(f"Added weekly energy data for {date_str}: Energy={energy_value}kWh, Power={power_value}W, Cost=${cost:.2f}")
+                            
+                        except Exception as e:
+                            logger.error(f"Error processing week entry {week_entry}: {str(e)}")
+                            continue
+                
+                return True
+                
+            except Exception as e:
+                logger.error(f"Error fetching energy data (attempt {retries+1}/{max_retries}): {str(e)}")
+                retries += 1
+                if retries < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    raise
+            finally:
+                # Cleanup session if it's from the real pymelcloud library
+                if session and hasattr(session, 'close') and callable(session.close):
+                    await session.close()
+                    logger.info("MELCloud session closed properly")
     
-    async def get_raw_data(self):
+    async def get_raw_data(self, max_retries=3, retry_delay=5):
         """Fetch raw data from MELCloud to inspect available fields.
         
         This method is useful for exploring the API and understanding what data is available.
         Returns the complete energy report as a dictionary.
         """
         session = None
-        try:
-            # First try to import the real module
+        retries = 0
+        
+        while retries < max_retries:
             try:
-                import pymelcloud
-                logger.info("Using real pymelcloud library")
-                session = await pymelcloud.login(self.username, self.password)
-                if not session:
-                    logger.error("pymelcloud login returned None")
-                    raise ValueError("Failed to authenticate with MELCloud")
-            except ImportError:
-                # If not available, use mock implementation
-                logger.warning("pymelcloud not available, using mock implementation")
-                session = await mock_login(self.username, self.password)
+                # Always ensure previous session is closed
+                if session and hasattr(session, 'close') and callable(session.close):
+                    await session.close()
+                    session = None
                 
-            # Check if session contains devices
-            if not session or "devices" not in session or not session["devices"]:
-                logger.error("No devices found in MELCloud session")
-                raise ValueError("No devices found in MELCloud account")
-                
-            device = session["devices"][0]  # Assuming first device is the heat pump
-            logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
-            
-            # Get device information
-            device_info = {
-                "name": getattr(device, "name", "Unknown"),
-                "serial_number": getattr(device, "serial_number", "Unknown"),
-                "power": getattr(device, "power", None),
-                "device_type": type(device).__name__
-            }
-            
-            # Get all available methods and properties
-            device_methods = [method for method in dir(device) if not method.startswith('_')]
-            
-            # Get energy report
-            try:
-                energy_report = device.energy_report()
-                logger.info("Successfully retrieved energy report")
-            except Exception as e:
-                logger.error(f"Error getting energy report: {str(e)}")
-                energy_report = {"error": str(e)}
-            
-            # Try to get other potentially useful information
-            additional_info = {}
-            for method in device_methods:
+                # First try to import the real module
                 try:
-                    if method not in ['energy_report'] and not method.startswith('_'):
-                        attr = getattr(device, method)
-                        if callable(attr):
-                            # Skip methods that require parameters
-                            if method in ['set_power', 'set_target_temperature']:
-                                continue
-                            try:
-                                result = attr()
-                                additional_info[method] = result
-                            except:
-                                pass
-                        else:
-                            additional_info[method] = attr
-                except:
-                    pass
-            
-            # Combine all information
-            result = {
-                "device_info": device_info,
-                "device_methods": device_methods,
-                "energy_report": energy_report,
-                "additional_info": additional_info
-            }
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error fetching raw data: {str(e)}")
-            return {"error": str(e)}
-        finally:
-            # Cleanup session if it's from the real pymelcloud library
-            if session and hasattr(session, 'close') and callable(session.close):
-                await session.close()
-                logger.info("MELCloud session closed properly")
+                    import pymelcloud
+                    logger.info("Using real pymelcloud library")
+                    session = await pymelcloud.login(self.username, self.password)
+                    if not session:
+                        logger.error("pymelcloud login returned None")
+                        raise ValueError("Failed to authenticate with MELCloud")
+                except ImportError:
+                    # If not available, use mock implementation
+                    logger.warning("pymelcloud not available, using mock implementation")
+                    session = await mock_login(self.username, self.password)
+                
+                # Check for devices using newer API pattern
+                devices = []
+                if hasattr(session, 'get') and callable(session.get):
+                    logger.info("Using session.get() to access devices")
+                    devices = session.get('devices', [])
+                elif isinstance(session, dict) and 'devices' in session:
+                    logger.info("Using dictionary access for devices")
+                    devices = session['devices']
+                
+                if not devices:
+                    logger.error(f"No devices found in MELCloud session (attempt {retries+1}/{max_retries})")
+                    retries += 1
+                    if retries < max_retries:
+                        logger.info(f"Retrying in {retry_delay} seconds...")
+                        await asyncio.sleep(retry_delay)
+                        continue
+                    raise ValueError("No devices found in MELCloud account after multiple attempts")
+                
+                device = devices[0]  # Assuming first device is the heat pump
+                logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
+                
+                # Get device information
+                device_info = {
+                    "name": getattr(device, "name", "Unknown"),
+                    "serial_number": getattr(device, "serial_number", "Unknown"),
+                    "power": getattr(device, "power", None),
+                    "device_type": type(device).__name__
+                }
+                
+                # Get all available methods and properties
+                device_methods = [method for method in dir(device) if not method.startswith('_')]
+                
+                # Get energy report
+                try:
+                    energy_report = device.energy_report()
+                    logger.info("Successfully retrieved energy report")
+                except Exception as e:
+                    logger.error(f"Error getting energy report: {str(e)}")
+                    energy_report = {"error": str(e)}
+                
+                # Try to get other potentially useful information
+                additional_info = {}
+                for method in device_methods:
+                    try:
+                        if method not in ['energy_report'] and not method.startswith('_'):
+                            attr = getattr(device, method)
+                            if callable(attr):
+                                # Skip methods that require parameters
+                                if method in ['set_power', 'set_target_temperature']:
+                                    continue
+                                try:
+                                    result = attr()
+                                    additional_info[method] = result
+                                except:
+                                    pass
+                            else:
+                                additional_info[method] = attr
+                    except:
+                        pass
+                
+                # Combine all information
+                result = {
+                    "device_info": device_info,
+                    "device_methods": device_methods,
+                    "energy_report": energy_report,
+                    "additional_info": additional_info
+                }
+                
+                return result
+                
+            except Exception as e:
+                logger.error(f"Error fetching raw data (attempt {retries+1}/{max_retries}): {str(e)}")
+                retries += 1
+                if retries < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    return {"error": str(e)}
+            finally:
+                # Cleanup session if it's from the real pymelcloud library
+                if session and hasattr(session, 'close') and callable(session.close):
+                    await session.close()
+                    logger.info("MELCloud session closed properly")
 
 class HomeAssistantFetcher:
     """Fetches temperature data from Home Assistant."""
