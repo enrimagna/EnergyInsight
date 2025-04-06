@@ -95,6 +95,7 @@ class MELCloudFetcher:
         
     async def test_connection(self):
         """Test the connection to MELCloud without fetching or processing data."""
+        session = None
         try:
             # First try to import the real module
             try:
@@ -144,9 +145,15 @@ class MELCloudFetcher:
         except Exception as e:
             logger.error(f"Error testing MELCloud connection: {str(e)}")
             raise  # Re-raise the exception for proper error handling
+        finally:
+            # Cleanup session if it's from the real pymelcloud library
+            if session and hasattr(session, 'close') and callable(session.close):
+                await session.close()
+                logger.info("MELCloud session closed properly")
         
     async def fetch_data(self):
         """Fetch energy usage data from MELCloud and store in database."""
+        session = None
         try:
             # First try to import the real module
             try:
@@ -295,6 +302,11 @@ class MELCloudFetcher:
         except Exception as e:
             logger.error(f"Error fetching energy data: {str(e)}")
             raise
+        finally:
+            # Cleanup session if it's from the real pymelcloud library
+            if session and hasattr(session, 'close') and callable(session.close):
+                await session.close()
+                logger.info("MELCloud session closed properly")
     
     async def get_raw_data(self):
         """Fetch raw data from MELCloud to inspect available fields.
@@ -302,6 +314,7 @@ class MELCloudFetcher:
         This method is useful for exploring the API and understanding what data is available.
         Returns the complete energy report as a dictionary.
         """
+        session = None
         try:
             # First try to import the real module
             try:
@@ -376,6 +389,11 @@ class MELCloudFetcher:
         except Exception as e:
             logger.error(f"Error fetching raw data: {str(e)}")
             return {"error": str(e)}
+        finally:
+            # Cleanup session if it's from the real pymelcloud library
+            if session and hasattr(session, 'close') and callable(session.close):
+                await session.close()
+                logger.info("MELCloud session closed properly")
 
 class HomeAssistantFetcher:
     """Fetches temperature data from Home Assistant."""
@@ -506,9 +524,6 @@ async def fetch_all_data():
     hass_fetcher.fetch_data()
     update_prices()
 
-import pymelcloud
-from pymelcloud import login as melcloud_login
-
 async def fetch_and_store_energy_data(start_date=None, end_date=None):
     username = os.getenv('MELCLOUD_USERNAME')
     password = os.getenv('MELCLOUD_PASSWORD')
@@ -527,37 +542,44 @@ async def fetch_and_store_energy_data(start_date=None, end_date=None):
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
 
-    # Login to MELCloud
+    session = None
     try:
-        import pymelcloud
-        session = await pymelcloud.login(username, password)
-        if not session:
-            logger.error("pymelcloud login returned None")
-            raise ValueError("Failed to authenticate with MELCloud")
-    except ImportError:
-        logger.warning("pymelcloud not available, using mock implementation")
-        session = await mock_login(username, password)
+        # Login to MELCloud
+        try:
+            import pymelcloud
+            session = await pymelcloud.login(username, password)
+            if not session:
+                logger.error("pymelcloud login returned None")
+                raise ValueError("Failed to authenticate with MELCloud")
+        except ImportError:
+            logger.warning("pymelcloud not available, using mock implementation")
+            session = await mock_login(username, password)
 
-    # Check if session contains devices
-    if not session or "devices" not in session or not session["devices"]:
-        logger.error("No devices found in MELCloud session")
-        raise ValueError("No devices found in MELCloud account")
+        # Check if session contains devices
+        if not session or "devices" not in session or not session["devices"]:
+            logger.error("No devices found in MELCloud session")
+            raise ValueError("No devices found in MELCloud account")
 
-    device = session["devices"][0]  # Assuming first device is the heat pump
-    logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
+        device = session["devices"][0]  # Assuming first device is the heat pump
+        logger.info(f"Found device: {getattr(device, 'name', 'Unknown')}")
 
-    # Fetch energy report
-    energy_report = await device.energy_report(start_date=start_date_str, end_date=end_date_str)
+        # Fetch energy report
+        energy_report = await device.energy_report(start_date=start_date_str, end_date=end_date_str)
 
-    # Print raw response
-    print(json.dumps(energy_report, indent=2))
+        # Print raw response
+        print(json.dumps(energy_report, indent=2))
 
-    # Store data in the database
-    db = Database()
-    for entry in energy_report['Energy_Consumed']['Day']:
-        db.insert_energy_data(date=entry['date'], value=entry['value'])
+        # Store data in the database
+        db = Database()
+        for entry in energy_report['Energy_Consumed']['Day']:
+            db.insert_energy_data(date=entry['date'], value=entry['value'])
 
-    logger.info(f"Data from {start_date_str} to {end_date_str} stored successfully.")
+        logger.info(f"Data from {start_date_str} to {end_date_str} stored successfully.")
+    finally:
+        # Cleanup session if it's from the real pymelcloud library
+        if session and hasattr(session, 'close') and callable(session.close):
+            await session.close()
+            logger.info("MELCloud session closed properly")
 
 if __name__ == "__main__":
     import asyncio
